@@ -1,4 +1,6 @@
-<?php echo '<!DOCTYPE html>'; 
+<?php
+// session_start();	// has started hanging... :(
+ echo '<!DOCTYPE html>'; 
 
 /**
 Nanni: Nice Annotation Interface
@@ -54,19 +56,91 @@ input[type=submit]:focus { border: solid 2px #ff0; }
 </style>
 
 <?
+/* Search file $f for key $key and return its value (separated by a tab).
+ * If $key is not found, return null;
+ */
+function get_key_value($f, $key) {
+	$DELIM = "\t";
+	$k = "$key$DELIM";
+	$kLen = strlen($k);
+	
+	$inF=fopen($f, 'r');	// open for writing, but don't truncate
+	if (flock($inF, LOCK_SH)) { // do an exclusive lock
+		$val = null;
+		while (!feof($inF)) {
+			$line=fgets($inF);
+			if (substr($line, 0, $kLen)===$k) {
+				$val = substr($line, $kLen);
+				break;
+			}
+		}
+		flock($inF, LOCK_UN); // release the lock
+	} else {
+		die("Couldn't lock the file: $f");
+	}
+	fclose($inF);
+	
+	return $val;
+}
+
+/* Search file $f for key $key, and set its value (following a tab) to $newval, replacing the rest of the line. 
+ * If $key is not already present in $f, append to the end of the file.
+ * Return the old value (null if key was not found).
+ */
+function update_key_value($f, $key, $newval) {
+	$DELIM = "\t";
+	$k = "$key$DELIM";
+	$kLen = strlen($k);
+	
+	$outF=fopen($f, 'c');	// open for writing, but don't truncate
+	if (flock($outF, LOCK_EX)) { // do an exclusive lock
+		$t=tempnam('/tmp', 'NANNI');
+		if (copy($f, $t)===false) {
+			die("couldn't copy $f to $t");
+		}
+		$tempF=fopen($t, 'r');
+		
+		$oldval = null;
+		while (!feof($tempF)) {
+			$line=fgets($tempF);
+			if (substr($line, 0, $kLen)===$k) {
+				if ($oldval!==null)
+					die("key seen twice in input: $key");
+				$oldval = substr($line, $kLen);
+				$line = "$k$newval";
+			}
+			fwrite($outF, $line);
+		}
+		if ($oldval===null)
+			fwrite($outF, "$k$newval");	// append
+		
+		fclose($tempF);
+		fflush($outF);
+		
+		flock($outF, LOCK_UN); // release the lock
+	} else {
+		die("Couldn't lock the file: $f");
+	}
+	fclose($outF);
+	
+	return $oldval;
+}
+
 
     //include_once("json.php");
 
 $user = $_SERVER['REMOTE_USER'];
+$u = preg_replace('/\s+/', '-', preg_replace('/@.*/', '',  $user));	// user alias
+$udir = "users/$u";	// user directory
 
 $lang = "EN";
 
 $init_stage = (array_key_exists('initialStage', $_REQUEST)) ? $_REQUEST['initialStage'] : '0';
 $prep = array_key_exists('prep', $_REQUEST);
+$new = array_key_exists('new', $_REQUEST);
 $instructionsCode = (array_key_exists('inst', $_REQUEST)) ? $_REQUEST['inst'] : '';
 $instructions = "mwe_ann_instructions$instructionsCode.md";
 
-session_start();
 
 if (!array_key_exists('from', $_REQUEST)) {	// demo mode
 	$iFrom = -1;
@@ -77,11 +151,13 @@ else {
 	$iTo = (array_key_exists('to', $_REQUEST)) ? intval($_REQUEST['to']) : -1;
 }
 
+
+
 if ($iFrom>-1) {
 	if (isset($_REQUEST['split']))
 		$split = $_REQUEST['split'];
 	else
-		$split = 'xxxx0x';
+		die("missing: split");
 	
 	/*
 	$perpage = intval($_REQUEST['perpage']);
@@ -89,12 +165,12 @@ if ($iFrom>-1) {
 		$perpage = 10;
 	*/
 	$perpage = 1;	// TODO: allow multiple sentences per page
+
+	$kv = "$udir/$split.nanni";
 	
 	if (array_key_exists("submit", $_REQUEST)) {	// save data from a page of annotation
 		
-		
-		
-		$TAG_FILE = "$split.nanni";
+		$TAG_FILE = "$udir/$split.nanni.all";
 		$tagF = fopen($TAG_FILE, 'a');
 		if (!$tagF) die("Unable to save annotations: " . getcwd() . "/$TAG_FILE");
 		
@@ -106,7 +182,11 @@ if ($iFrom>-1) {
 		for ($I=0; $I<count($_REQUEST['sentid']); $I++) {
 			$mwe = trim(preg_replace('/\s+/', ' ',  $_REQUEST['mwe'][$I]));
 			$note = trim(preg_replace('/\s+/', ' ',  $_REQUEST['note'][$I]));
-			fwrite($tagF, $_REQUEST['sentid'][$I] . "\t" . $_REQUEST['loadtime'] . "\t" . mktime() . "\t$user\t$ann\t{\"sgroups\": " . $_REQUEST['sgroups'][$I] . ",   \"wgroups\": " . $_REQUEST['wgroups'][$I] . (($prep) ? ",   \"preps:\" " . $_REQUEST['preps'][$I] : '') . ",   \"url\": \"" . $_SERVER["SERVER_NAME"].$_SERVER["REQUEST_URI"] . "\",   \"session\": \"" . session_id() . "\"}\t$mwe\t$note\n");
+			$key = $_REQUEST['sentid'][$I];
+			$initval = $_REQUEST['initval'][$I];
+			$val = $_REQUEST['loadtime'] . "\t" . mktime() . "\t$user\t$ann\t{\"initval\": \"$initval\",   \"sgroups\": " . $_REQUEST['sgroups'][$I] . ",   \"wgroups\": " . $_REQUEST['wgroups'][$I] . (($prep) ? ",   \"preps:\" " . $_REQUEST['preps'][$I] : '') . ",   \"url\": \"" . $_SERVER["SERVER_NAME"].$_SERVER["REQUEST_URI"] . "\",   \"session\": \"" . session_id() . "\"}\t$mwe\t$note\n";
+			fwrite($tagF, "$key\t$val");
+			update_key_value($kv, $key, $val);
 		}
 		fclose($tagF);
 		
@@ -123,7 +203,7 @@ if ($iFrom>-1) {
 	
 	($iFrom>=0 && ($iTo>$iFrom || $iTo==-1)) or die("You have finished annotating the current batch. Thanks!");
 	
-	$IN_FILE = "$split.tok.txt";
+	$IN_FILE = "$udir/$split";
 	$f = fopen($IN_FILE, 'r');
 	
 	
@@ -147,7 +227,17 @@ if ($iFrom>-1) {
 				//for ($i=0; $i<count($tokens); $i++)
 				//	$taggedS .= "$tokens[$i]/$tags[$i] ";
 	
-				array_push($SENTENCES, array('sentence' => trim($tokenizedS), 'sentenceId' => $sentId));
+				$sentdata = array('sentence' => trim($tokenizedS), 'sentenceId' => $sentId);
+				if (!$new) {
+					$v = get_key_value($kv, $sentId);
+					$v = substr($v, 0, strlen($v)-1);	// strip newline
+					if ($v!==null) {
+						$parts = explode("\t", $v);
+						$sentdata['initval'] = $parts[count($parts)-2];
+						$sentdata['note'] = $parts[count($parts)-1];
+					}
+				}
+				array_push($SENTENCES, $sentdata);
 			}
 			$l++;
 		}
@@ -390,9 +480,10 @@ ItemNoteAnnotator.prototype.identifyTargets = function() {
 	a.firstrender = function () {
 		var item = this.ann.item;
 		var itemId = this.ann.itemId;
+		this.initval = $(item).find('input.initnote').val();
 		var $control = $('<textarea/>').attr({"id": "note_"+itemId, "name": "note[]", 
 										  "placeholder": "Note for sentence "+itemId+" (optional)",
-										  "rows": "1", "cols": "80"}).addClass("comment");
+										  "rows": "1", "cols": "80"}).addClass("comment").val(this.initval);
 		this.target = $control.get(0);
 		$('<p/>').append($control).appendTo(item);
 		this.ann.submittable = true;
@@ -418,8 +509,11 @@ MWEAnnotator.prototype.identifyTargets = function() {
 		var itemId = this.ann.itemId;
 		var $sentence = $(item).find('p.sent');
 		this.sentence = $sentence.text();
+		this.initval = $(item).find('input.initval').val();
+		if (!this.initval)
+			this.initval = this.sentence;
 		var $control = $('<textarea/>').attr({"id": "mwe_"+itemId, "name": "mwe[]", 
-										  "rows": "3", "cols": "80"}).addClass("input").val(this.sentence);
+										  "rows": "3", "cols": "80"}).addClass("input").val(this.initval);
 		var $out1 = $('<input type="hidden" name="sgroups[]" class="sgroups" value=""/>').attr({"id": "sgroups_"+itemId});
 		var $out2 = $('<input type="hidden" name="wgroups[]" class="wgroups" value=""/>').attr({"id": "wgroups_"+itemId});
 		this.target = $control.get(0);
@@ -937,7 +1031,7 @@ $(function () {
 	else if (PrepTokenAnnotator.annotatorTypeIndex!==undefined && PrepTokenAnnotator.prototype.startStage==(CUR_STAGE+1))
 		$('input[type=submit]').val("Continue to prepositions »");
 	
-	$('form').sisyphus();	// use localstorage to cache form data so it is preserved across refresh
+//	$('form').sisyphus();	// use localstorage to cache form data so it is preserved across refresh
 	for (var I=0; I<II.length; I++) {	// now that input fields may have been populated, re-render the MWE annotations
 		AA[I][MWEAnnotator.annotatorTypeIndex].validate();
 	}
@@ -1207,6 +1301,8 @@ function doSubmit() {
 
 <div id="_<?= $sid ?>" class="item">
 <input type="hidden" name="sentid[]" value="<?= $sid ?>" />
+<input type="hidden" name="initval[]" class="initval" value="<?= $s['initval'] ?>" />
+<input type="hidden" name="initnote[]" class="initnote" value="<?= $s['note'] ?>" />
 <p id="sent_<?= $sid ?>" class="sent"><?= $s['sentence'] ?></p>
 <!--<p><textarea id="input_<?= $sid ?>" name="annotation" rows="3" cols="80" class="input"><?= $s['sentence'] ?></textarea>
 <input type="hidden" id="sgroups_<?= $sid ?>" name="sgroups" class="sgroups" value="" />

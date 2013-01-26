@@ -17,10 +17,16 @@ Status: IN DEVELOPMENT
  * written in Javascript and PHP
  * works in Firefox
 
+# Preliminary
+
+ * annotation persistence (for an item and user); not yet supported for (preposition) tags
+
 # Upcoming features
 
- * viewing/initializing with previous annotations of an item
+ * viewing previous annotations of an item
  * viewing multiple previous annotations side-by-side
+ * compound users for consensus
+ * flexible item navigation
 
 # Possible features
 
