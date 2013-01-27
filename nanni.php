@@ -46,6 +46,8 @@ input[type=submit] { height: 3em; width: 80%; }
 input[type=submit]:hover { background-color: #333; color: #eee; }
 input[type=submit]:focus { border: solid 2px #ff0; }
 
+.outdated { color: #ccc; }
+
 .w { position: relative; display: inline-block; vertical-align: top; margin-bottom: 1.5em; }
 .w input:-moz-placeholder { font-style: italic; }
 .w input::-webkit-input-placeholder { font-style: italic; }
@@ -79,8 +81,38 @@ function get_key_value($f, $key) {
 		die("Couldn't lock the file: $f");
 	}
 	fclose($inF);
+
+	return substr($val, 0, strlen($val)-1);	// strip newline
+}
+
+/* Search file(s) matching $fpat for key $key and add each of its values (separated by a tab) to an array.
+ */
+function get_key_values($fpat, $key) {
+	$DELIM = "\t";
+	$k = "$key$DELIM";
+	$kLen = strlen($k);
 	
-	return $val;
+	$vals = array();
+	
+	foreach (glob($fpat) as $f) {
+		$inF=fopen($f, 'r');	// open for writing, but don't truncate
+		if (flock($inF, LOCK_SH)) { // do an exclusive lock
+			$val = null;
+			while (!feof($inF)) {
+				$line=fgets($inF);
+				if (substr($line, 0, $kLen)===$k) {
+					$val = substr($line, $kLen);
+					$val = substr($val, 0, strlen($val)-1);	// strip newline
+					array_push($vals, $val);
+				}
+			}
+			flock($inF, LOCK_UN); // release the lock
+		} else {
+			die("Couldn't lock the file: $f");
+		}
+		fclose($inF);
+	}
+	return $vals;
 }
 
 /* Search file $f for key $key, and set its value (following a tab) to $newval, replacing the rest of the line. 
@@ -132,12 +164,14 @@ function update_key_value($f, $key, $newval) {
 $user = $_SERVER['REMOTE_USER'];
 $u = preg_replace('/\s+/', '-', preg_replace('/@.*/', '',  $user));	// user alias
 $udir = "users/$u";	// user directory
+$ddir = "data";	// data directory
 
 $lang = "EN";
 
 $init_stage = (array_key_exists('initialStage', $_REQUEST)) ? $_REQUEST['initialStage'] : '0';
 $prep = array_key_exists('prep', $_REQUEST);
 $new = array_key_exists('new', $_REQUEST);
+$versions = array_key_exists('versions', $_REQUEST);
 $instructionsCode = (array_key_exists('inst', $_REQUEST)) ? $_REQUEST['inst'] : '';
 $instructions = "mwe_ann_instructions$instructionsCode.md";
 
@@ -203,7 +237,7 @@ if ($iFrom>-1) {
 	
 	($iFrom>=0 && ($iTo>$iFrom || $iTo==-1)) or die("You have finished annotating the current batch. Thanks!");
 	
-	$IN_FILE = "$udir/$split";
+	$IN_FILE = "$ddir/$split";
 	$f = fopen($IN_FILE, 'r');
 	
 	
@@ -228,14 +262,16 @@ if ($iFrom>-1) {
 				//	$taggedS .= "$tokens[$i]/$tags[$i] ";
 	
 				$sentdata = array('sentence' => trim($tokenizedS), 'sentenceId' => $sentId);
-				if (!$new) {
+				if (!$new) {	// load user's current version of the sentence, if available
 					$v = get_key_value($kv, $sentId);
-					$v = substr($v, 0, strlen($v)-1);	// strip newline
 					if ($v!==null) {
 						$parts = explode("\t", $v);
 						$sentdata['initval'] = $parts[count($parts)-2];
 						$sentdata['note'] = $parts[count($parts)-1];
 					}
+				}
+				if ($versions) {	// load all versions of this sentence
+					$sentdata['versions'] = get_key_values("users/*/$split.nanni.all", $sentId);
 				}
 				array_push($SENTENCES, $sentdata);
 			}
@@ -485,7 +521,7 @@ ItemNoteAnnotator.prototype.identifyTargets = function() {
 										  "placeholder": "Note for sentence "+itemId+" (optional)",
 										  "rows": "1", "cols": "80"}).addClass("comment").val(this.initval);
 		this.target = $control.get(0);
-		$('<p/>').append($control).appendTo(item);
+		$('<p/>').append($control).insertBefore($(item).find('p:last-child'));
 		this.ann.submittable = true;
 	}
 }
@@ -1270,6 +1306,21 @@ function parseMWEMarkup(s) {
 }
 
 
+function loadVersion(I, versionS) {
+	parts = versionS.split('\t');
+
+	var mweactor = AA[I][MWEAnnotator.annotatorTypeIndex].actors[0];
+	$(mweactor.target).val(parts[parts.length-2]);
+	ann_update(mweactor, mweactor.getValue());
+	
+	var noteactor = AA[I][ItemNoteAnnotator.annotatorTypeIndex].actors[0];
+	$(noteactor.target).val(parts[parts.length-1]);
+	ann_update(noteactor, noteactor.getValue());
+	
+	// TOOD: prep tags
+}
+
+
 function doSubmit() {
 
 <? if ($iFrom<0) { // demo mode
@@ -1295,7 +1346,8 @@ function doSubmit() {
 <form id="mainform" action="" method="post">
 
 <? if (count($SENTENCES)==0) { ?><h1 style="text-align: center;">DONE.</h1><? } ?>
-<? foreach ($SENTENCES as $s) { 	// TODO: submit button will have to move to actually support multiple sentences per page?
+<? $I=0;
+   foreach ($SENTENCES as $s) { 	// TODO: submit button will have to move to actually support multiple sentences per page?
 		$sid = $s['sentenceId'];
 ?>
 
@@ -1316,9 +1368,48 @@ function doSubmit() {
 	 /></p>
 <!--<p><textarea id="note_<?= $sid ?>" name="note" rows="1" cols="80" class="comment" placeholder="Note for sentence <?= $sid ?> (optional)"></textarea></p>-->
 
+<?
+function versioncmp($a, $b) {
+	// sort by submission time (second field in string)
+	$partsA = explode("\t", $a);
+	$partsB = explode("\t", $b);
+	$subtimeA = intval($partsA[1]);
+	$subtimeB = intval($partsB[1]);
+	if ($subtimeA==$subtimeB) { return 0; }
+	return ($subtimeA < $subtimeB) ? -1 : 1;
+}
+?>
+<p style="text-align: center; font-size: small;"><? if ($versions && count($s['versions'])>0) { ?><select size="<?= min(5,count($s['versions'])) ?>" onchange="loadVersion(<?= $I ?>, this.value)" style="font-family: monospace; white-space: pre;"><?
+//	usort($s['versions'], 'versioncmp');
+	$iver = 0;
+	$nver = count($s['versions']);
+	$users = array();
+	foreach ($s['versions'] as $ver) {
+		$parts = explode("\t", $ver);
+		$user = preg_replace('/@.*/', '', $parts[2]);
+		$mweS = htmlspecialchars($parts[count($parts)-2]);
+		$noteS = htmlspecialchars($parts[count($parts)-1]);
+		$titleS = $mweS . (($noteS) ? "\n\n$noteS" : '');
+		
+		echo '<option value="' . htmlspecialchars($ver) . '" title="' . $titleS . '"';
+		if (isset($users[$user])) {
+			echo ' class="outdated"';
+		}
+		else {
+			$users[$user] = true;
+		}
+		echo '>' . str_replace(" ", "&nbsp;", str_pad($nver-$iver, strlen(strval($nver)), " ", STR_PAD_LEFT)) . ' &nbsp; ' . date('r', intval($parts[1])) . ' &nbsp; ' . htmlspecialchars($user) . '</option>';
+		$iver++;
+	}
+?></select>
+
+<? } else if ($versions) { echo 'No other versions of this sentence.'; } ?>
+</p>
+
 </div>
 
-<? } ?>
+<?   $I++;
+   } ?>
 
 <!-- TOOD: reset button?
 <p style="text-align: center;"><input type="reset" name="reset" style="background-color: #000; border: solid 1px #000; color: #fff;" /></p>
