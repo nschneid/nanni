@@ -42,11 +42,17 @@ div.item { max-width: 40em; margin-left: auto; margin-right: auto; }
 .wlu1 { border-bottom: solid 2px #093; }
 .wlu0 { border-bottom: solid 2px #33c; }
 .note:default { color: #ccc; }
-input[type=submit] { height: 3em; width: 80%; }
-input[type=submit]:hover { background-color: #333; color: #eee; }
-input[type=submit]:focus { border: solid 2px #ff0; }
+input[type=submit] { height: 3em; width: 65%; }
+input.btnprev,input.btnnext { height: 3em; width: 15%; }
+input[type=submit]:hover:not([disabled]),input.btnprev:hover:not([disabled]),input.btnnext:hover:not([disabled]) { background-color: #333; color: #eee; }
+input[type=submit]:focus:not([disabled]),input.btnprev:focus:not([disabled]),input.btnnext:focus:not([disabled]) { border: solid 2px #ff0; }
+
+textarea[readonly],input[readonly] { border: none; }
 
 .outdated { color: #ccc; }
+
+body.embedded p { margin-top: 0; margin-bottom: 0; }
+body.embedded textarea { background-color: transparent; }
 
 .w { position: relative; display: inline-block; vertical-align: top; margin-bottom: 1.5em; }
 .w input:-moz-placeholder { font-style: italic; }
@@ -161,8 +167,19 @@ function update_key_value($f, $key, $newval) {
 
     //include_once("json.php");
 
+// user handling
 $user = $_SERVER['REMOTE_USER'];
-$u = preg_replace('/\s+/', '-', preg_replace('/@.*/', '',  $user));	// user alias
+$authenticated_user = preg_replace('/\s+/', '-', preg_replace('/@.*/', '',  $user));	// user alias (no @domain.edu)
+
+if (isset($_REQUEST['u'])) {	// impersonating another user
+	$u = $_REQUEST['u'];
+	if (strpos($u, '@')!==false) { die("Invalid user ID: $u"); }
+	else if ($authenticated_user!='nschneid' && strpos("+$u+", "+$authenticated_user+")===false) {
+		die("Authenticated user $authenticated_user cannot log in as $u");
+	}
+}
+else { $u = $authenticated_user; }
+
 $udir = "users/$u";	// user directory
 $ddir = "data";	// data directory
 
@@ -171,10 +188,16 @@ $lang = "EN";
 $init_stage = (array_key_exists('initialStage', $_REQUEST)) ? $_REQUEST['initialStage'] : '0';
 $prep = array_key_exists('prep', $_REQUEST);
 $new = array_key_exists('new', $_REQUEST);
-$versions = array_key_exists('versions', $_REQUEST);
+$nonav = array_key_exists('nonav', $_REQUEST);
+$nosubmit = array_key_exists('nosubmit', $_REQUEST);
+$vv = isset($_REQUEST['v']) ? $_REQUEST['v'] : null;	// invoke version browser(s) in an iframe
+$versions = array_key_exists('versions', $_REQUEST);	// the version browser itself
 $instructionsCode = (array_key_exists('inst', $_REQUEST)) ? $_REQUEST['inst'] : '';
 $instructions = "mwe_ann_instructions$instructionsCode.md";
-
+$noinstr = array_key_exists('noinstr', $_REQUEST);
+$nooutdated = array_key_exists('nooutdated', $_REQUEST);
+$readonly = array_key_exists('readonly', $_REQUEST);
+$embedded = array_key_exists('embedded', $_REQUEST);
 
 if (!array_key_exists('from', $_REQUEST)) {	// demo mode
 	$iFrom = -1;
@@ -231,8 +254,13 @@ if ($iFrom>-1) {
 		fwrite($logF, htmlspecialchars_decode(stripslashes($_REQUEST['resultsLog']), ENT_QUOTES));
 		fclose($logF);
 		*/
-		
-		header("Location: ?split=$split&from=$iFrom&to=$iTo&initialStage=$init_stage&inst=$instructionsCode" . (($prep) ? '&prep' : ''));
+		$qsarray = $_GET;
+		foreach ($_GET as $k=>$v) {
+			if (isset($_POST[$k])) {	// allow POST parameter (from form) to override GET (from current page URL)
+				$qsarray[$k] = $_POST[$k];
+			}
+		}
+		header('Location: ?' . http_build_query($qsarray));
 	}
 	
 	($iFrom>=0 && ($iTo>$iFrom || $iTo==-1)) or die("You have finished annotating the current batch. Thanks!");
@@ -270,8 +298,14 @@ if ($iFrom>-1) {
 						$sentdata['note'] = $parts[count($parts)-1];
 					}
 				}
-				if ($versions) {	// load all versions of this sentence
-					$sentdata['versions'] = get_key_values("users/*/$split.nanni.all", $sentId);
+				if ($versions || $vv!==null) {	// load all versions of this sentence
+					if ($versions && strlen($_REQUEST['versions'])>0) {
+						// filter to a specified user
+						$sentdata['versions'] = get_key_values("users/" . $_REQUEST['versions'] . "/$split.nanni.all", $sentId);
+					}
+					else {	// all users
+						$sentdata['versions'] = get_key_values("users/*/$split.nanni.all", $sentId);
+					}
 				}
 				array_push($SENTENCES, $sentdata);
 			}
@@ -519,9 +553,11 @@ ItemNoteAnnotator.prototype.identifyTargets = function() {
 		this.initval = $(item).find('input.initnote').val();
 		var $control = $('<textarea/>').attr({"id": "note_"+itemId, "name": "note[]", 
 										  "placeholder": "Note for sentence "+itemId+" (optional)",
-										  "rows": "1", "cols": "80"}).addClass("comment").val(this.initval);
+										  "rows": "1", "cols": "80",
+										  "readonly": <?= ($readonly) ? 'true' : 'false' ?>}).addClass("comment").val(this.initval);
+		if ($control.prop("readonly") && $control.val()==="") $control.hide();
 		this.target = $control.get(0);
-		$('<p/>').append($control).insertBefore($(item).find('p:last-child'));
+		$('<p/>').append($control).insertAfter($(item).find('p.buttons'));
 		this.ann.submittable = true;
 	}
 }
@@ -549,7 +585,9 @@ MWEAnnotator.prototype.identifyTargets = function() {
 		if (!this.initval)
 			this.initval = this.sentence;
 		var $control = $('<textarea/>').attr({"id": "mwe_"+itemId, "name": "mwe[]", 
-										  "rows": "3", "cols": "80"}).addClass("input").val(this.initval);
+										  "rows": "3", "cols": "80",
+										  "readonly": <?= ($readonly) ? 'true' : 'false' ?>}).addClass("input").val(this.initval);
+		
 		var $out1 = $('<input type="hidden" name="sgroups[]" class="sgroups" value=""/>').attr({"id": "sgroups_"+itemId});
 		var $out2 = $('<input type="hidden" name="wgroups[]" class="wgroups" value=""/>').attr({"id": "wgroups_"+itemId});
 		this.target = $control.get(0);
@@ -1062,8 +1100,9 @@ $(function () {
 	ann_init();
 	ann_setup();
 	
-	if ((CUR_STAGE+1)>=NUM_STAGES)
-		$('input[type=submit]').val("Next sentence »");
+	if ((CUR_STAGE+1)>=NUM_STAGES) {
+		//$('input[type=submit]').val("Next sentence »");
+	}
 	else if (PrepTokenAnnotator.annotatorTypeIndex!==undefined && PrepTokenAnnotator.prototype.startStage==(CUR_STAGE+1))
 		$('input[type=submit]').val("Continue to prepositions »");
 	
@@ -1338,10 +1377,9 @@ function doSubmit() {
 	return ann_submit();
 }
 </script>
-<title>Multiword Expression Annotation (<?= $_SERVER['REMOTE_USER'] ?>)</title>
+<title>Multiword Expression Annotation (<?= $_SERVER['REMOTE_USER'] ?> as <?= $u ?>)</title>
 </head>
-<body>
-
+<body<?= ($embedded) ? ' class="embedded"' : '' ?>>
 
 <form id="mainform" action="" method="post">
 
@@ -1359,13 +1397,22 @@ function doSubmit() {
 <!--<p><textarea id="input_<?= $sid ?>" name="annotation" rows="3" cols="80" class="input"><?= $s['sentence'] ?></textarea>
 <input type="hidden" id="sgroups_<?= $sid ?>" name="sgroups" class="sgroups" value="" />
 <input type="hidden" id="wgroups_<?= $sid ?>" name="wgroups" class="wgroups" value="" /></p>-->
-<p style="text-align: center;"><input type="submit" name="submit" onclick="return doSubmit();" style="white-space: normal;"
-	<? if ($iFrom<0) { ?>
-	value="This is a live demo of the annotation interface. Click here to toggle one possible analysis of this sentence. You can change the analysis by editing the text in the box above."
-	<? } else { ?>
-	value="Next &raquo;";
-	<? } ?>
-	 /></p>
+<? if (!$nonav || !$nosubmit) { 
+      $reqarr = $_GET;
+      $reqarr['from'] = $iFrom-1;
+      $prevurl = '?' . http_build_query($reqarr);
+      $reqarr['from'] = $iFrom+1;
+      $nexturl = '?' . http_build_query($reqarr);
+?>
+<p style="text-align: center;" class="buttons">
+  <? if (!$nonav) { ?><input type="button" class="btnprev" value="&laquo; Previous" onclick="document.location='<?= htmlspecialchars($prevurl) ?>'"<?= (($iFrom==0) ? 'disabled="disabled"' : '') ?> /><? } ?>
+	<input type="submit" name="submit" onclick="return doSubmit();" style="white-space: normal;" <? 
+      if ($iFrom<0) { ?>value="This is a live demo of the annotation interface. Click here to toggle one possible analysis of this sentence. You can change the analysis by editing the text in the box above."<? } 
+   else if ($nonav) { ?>value="Save"<? }
+               else { ?>value="Save &amp; continue &raquo;"<? } ?> />
+  <? if (!$nonav) { ?><input type="button" class="btnnext" value="Next &raquo;" onclick="document.location='<?= htmlspecialchars($nexturl) ?>'"<?= (($iFrom+1==$iTo) ? 'disabled="disabled"' : '') ?> /><? } ?>
+</p>
+<? } ?>
 <!--<p><textarea id="note_<?= $sid ?>" name="note" rows="1" cols="80" class="comment" placeholder="Note for sentence <?= $sid ?> (optional)"></textarea></p>-->
 
 <?
@@ -1376,11 +1423,11 @@ function versioncmp($a, $b) {
 	$subtimeA = intval($partsA[1]);
 	$subtimeB = intval($partsB[1]);
 	if ($subtimeA==$subtimeB) { return 0; }
-	return ($subtimeA < $subtimeB) ? -1 : 1;
+	return ($subtimeA < $subtimeB) ? 1 : -1;
 }
 ?>
-<p style="text-align: center; font-size: small;"><? if ($versions && count($s['versions'])>0) { ?><select size="<?= min(5,count($s['versions'])) ?>" onchange="loadVersion(<?= $I ?>, this.value)" style="font-family: monospace; white-space: pre;"><?
-//	usort($s['versions'], 'versioncmp');
+<p style="text-align: center; font-size: small;"><? if ($versions && count($s['versions'])>0) { ?><select onchange="loadVersion(<?= $I ?>, this.value)" style="font-family: monospace; white-space: pre;"><?
+	usort($s['versions'], 'versioncmp');
 	$iver = 0;
 	$nver = count($s['versions']);
 	$users = array();
@@ -1390,6 +1437,10 @@ function versioncmp($a, $b) {
 		$mweS = htmlspecialchars($parts[count($parts)-2]);
 		$noteS = htmlspecialchars($parts[count($parts)-1]);
 		$titleS = $mweS . (($noteS) ? "\n\n$noteS" : '');
+		
+		// filter all but the most recent version from each user
+		if ($nooutdated && isset($users[$user])) { continue; }
+
 		
 		echo '<option value="' . htmlspecialchars($ver) . '" title="' . $titleS . '"';
 		if (isset($users[$user])) {
@@ -1402,9 +1453,26 @@ function versioncmp($a, $b) {
 		$iver++;
 	}
 ?></select>
+<script type="text/javascript">
+$(function () {
+	$('select').each(function (j) { this.size=Math.min(5,this.options.length); $(this).change(); })
+});
+</script>
 
 <? } else if ($versions) { echo 'No other versions of this sentence.'; } ?>
 </p>
+
+	<? if ($vv!==null && !$versions) { 
+		  foreach (((is_array($vv)) ? $vv : array($vv)) as $thisv) {
+	?>
+	<div class="versions">
+		<p style="text-align: center; font-size: small;"><a href="#" onclick="$(this).parent().next('iframe').toggle();"><?= count($s['versions']) ?> versions in history</a></p>
+		<iframe src="<?= htmlspecialchars($_SERVER["REQUEST_URI"]) ?>&amp;versions=<?= preg_replace('/^ /', '', $thisv) ?>&amp;nonav&amp;nosubmit&amp;noinstr&amp;readonly&amp;embedded" 
+				style="<?= (strlen($thisv)>=1 && substr($thisv,0,1)==' ') ? '' : 'display: none; ' ?>width: 106%; height: 15em; position: relative; left: -2%; border: none; background-color: #eee;"></iframe>
+	</div>
+	<? 
+	      }
+	  } ?>
 
 </div>
 
@@ -1415,7 +1483,11 @@ function versioncmp($a, $b) {
 <p style="text-align: center;"><input type="reset" name="reset" style="background-color: #000; border: solid 1px #000; color: #fff;" /></p>
 -->
 
-<p style="text-align: center"><small><a href="<?= $instructions ?>" style="color: #aaa;" target="_blank">instructions</a></small></p>
+<p style="text-align: center">
+<? if (!$noinstr) { ?>
+	<small><a href="<?= $instructions ?>" style="color: #aaa;" target="_blank">instructions</a></small>
+<? } ?>
+</p>
 
 
 <div class="controls">
