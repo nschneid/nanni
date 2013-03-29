@@ -61,129 +61,16 @@ body.embedded textarea { background-color: transparent; }
 .tokenlabel { width: 6em; border: solid 1px #ccc; position: absolute; top: 2.1em; left: 0; }
 .ui-menu-item { font-size: 10pt; }
 .ui-menu .ui-menu-item a { padding-top: 0; padding-bottom: 0; }
+
+.indexlinks { position: fixed; bottom: 10px; right: 10px; }
+.indexlinks a { color: #aaa; font-variant: small-caps; }
 </style>
 
 <?
 /* Search file $f for key $key and return its value (separated by a tab).
  * If $key is not found, return null;
  */
-function get_key_value($f, $key) {
-	$DELIM = "\t";
-	$k = "$key$DELIM";
-	$kLen = strlen($k);
-	
-	$inF=fopen($f, 'r');	// open for writing, but don't truncate
-	if (flock($inF, LOCK_SH)) { // do an exclusive lock
-		$val = null;
-		while (!feof($inF)) {
-			$line=fgets($inF);
-			if (substr($line, 0, $kLen)===$k) {
-				$val = substr($line, $kLen);
-				break;
-			}
-		}
-		flock($inF, LOCK_UN); // release the lock
-	} else {
-		die("Couldn't lock the file: $f");
-	}
-	fclose($inF);
-
-	return substr($val, 0, strlen($val)-1);	// strip newline
-}
-
-/* Search file(s) matching $fpat for key $key and add each of its values (separated by a tab) to an array.
- */
-function get_key_values($fpat, $key) {
-	$DELIM = "\t";
-	$k = "$key$DELIM";
-	$kLen = strlen($k);
-	
-	$vals = array();
-	
-	foreach (glob($fpat) as $f) {
-		$inF=fopen($f, 'r');	// open for writing, but don't truncate
-		if (flock($inF, LOCK_SH)) { // do an exclusive lock
-			$val = null;
-			while (!feof($inF)) {
-				$line=fgets($inF);
-				if (substr($line, 0, $kLen)===$k) {
-					$val = substr($line, $kLen);
-					$val = substr($val, 0, strlen($val)-1);	// strip newline
-					array_push($vals, $val);
-				}
-			}
-			flock($inF, LOCK_UN); // release the lock
-		} else {
-			die("Couldn't lock the file: $f");
-		}
-		fclose($inF);
-	}
-	return $vals;
-}
-
-/* Search file $f for key $key, and set its value (following a tab) to $newval, replacing the rest of the line. 
- * If $key is not already present in $f, append to the end of the file.
- * Return the old value (null if key was not found).
- */
-function update_key_value($f, $key, $newval) {
-	$DELIM = "\t";
-	$k = "$key$DELIM";
-	$kLen = strlen($k);
-	
-	$outF=fopen($f, 'c');	// open for writing, but don't truncate
-	if (flock($outF, LOCK_EX)) { // do an exclusive lock
-		$t=tempnam('/tmp', 'NANNI');
-		if (copy($f, $t)===false) {
-			die("couldn't copy $f to $t");
-		}
-		$tempF=fopen($t, 'r');
-		
-		$oldval = null;
-		while (!feof($tempF)) {
-			$line=fgets($tempF);
-			if (substr($line, 0, $kLen)===$k) {
-				if ($oldval!==null)
-					die("key seen twice in input: $key");
-				$oldval = substr($line, $kLen);
-				$line = "$k$newval";
-			}
-			fwrite($outF, $line);
-		}
-		if ($oldval===null)
-			fwrite($outF, "$k$newval");	// append
-		
-		fclose($tempF);
-		fflush($outF);
-		
-		flock($outF, LOCK_UN); // release the lock
-	} else {
-		die("Couldn't lock the file: $f");
-	}
-	fclose($outF);
-	
-	return $oldval;
-}
-
-
-    //include_once("json.php");
-
-// user handling
-$user = $_SERVER['REMOTE_USER'];
-$authenticated_user = preg_replace('/\s+/', '-', preg_replace('/@.*/', '',  $user));	// user alias (no @domain.edu)
-
-if (isset($_REQUEST['u'])) {	// impersonating another user
-	$u = $_REQUEST['u'];
-	if (strpos($u, '@')!==false) { die("Invalid user ID: $u"); }
-	else if ($authenticated_user!='nschneid' && strpos("+$u+", "+$authenticated_user+")===false) {
-		die("Authenticated user $authenticated_user cannot log in as $u");
-	}
-}
-else { $u = $authenticated_user; }
-
-$udir = "users/$u";	// user directory
-$ddir = "data";	// data directory
-
-$lang = "EN";
+include_once('nanni_include.php');
 
 $init_stage = (array_key_exists('initialStage', $_REQUEST)) ? $_REQUEST['initialStage'] : '0';
 $prep = array_key_exists('prep', $_REQUEST);
@@ -240,8 +127,8 @@ if ($iFrom>-1) {
 			$mwe = trim(preg_replace('/\s+/', ' ',  $_REQUEST['mwe'][$I]));
 			$note = trim(preg_replace('/\s+/', ' ',  $_REQUEST['note'][$I]));
 			$key = $_REQUEST['sentid'][$I];
-			$initval = $_REQUEST['initval'][$I];
-			$val = $_REQUEST['loadtime'] . "\t" . mktime() . "\t$user\t$ann\t{\"initval\": \"$initval\",   \"sgroups\": " . $_REQUEST['sgroups'][$I] . ",   \"wgroups\": " . $_REQUEST['wgroups'][$I] . (($prep) ? ",   \"preps:\" " . $_REQUEST['preps'][$I] : '') . ",   \"url\": \"" . $_SERVER["SERVER_NAME"].$_SERVER["REQUEST_URI"] . "\",   \"session\": \"" . session_id() . "\"}\t$mwe\t$note\n";
+			$initval = addslashes($_REQUEST['initval'][$I]);
+			$val = $_REQUEST['loadtime'] . "\t" . mktime() . "\t@$u\t$ann\t{\"initval\": \"$initval\",   \"sgroups\": " . $_REQUEST['sgroups'][$I] . ",   \"wgroups\": " . $_REQUEST['wgroups'][$I] . (($prep) ? ",   \"preps:\" " . $_REQUEST['preps'][$I] : '') . ",   \"url\": \"" . $_SERVER["SERVER_NAME"].$_SERVER["REQUEST_URI"] . "\",   \"session\": \"" . session_id() . "\",  \"authuser\": \"$user\"}\t$mwe\t$note\n";
 			fwrite($tagF, "$key\t$val");
 			update_key_value($kv, $key, $val);
 		}
@@ -290,12 +177,16 @@ if ($iFrom>-1) {
 				//	$taggedS .= "$tokens[$i]/$tags[$i] ";
 	
 				$sentdata = array('sentence' => trim($tokenizedS), 'sentenceId' => $sentId);
+
 				if (!$new) {	// load user's current version of the sentence, if available
+
 					$v = get_key_value($kv, $sentId);
+//if ($readonly) {	die($kv); }	// TODO: $v is null! this is because $kv refers to the current user, not the user whose version is being displayed
 					if ($v!==null) {
 						$parts = explode("\t", $v);
-						$sentdata['initval'] = $parts[count($parts)-2];
-						$sentdata['note'] = $parts[count($parts)-1];
+						$sentdata['initval'] = htmlspecialchars($parts[count($parts)-2]);
+						$sentdata['note'] = htmlspecialchars($parts[count($parts)-1]);
+
 					}
 				}
 				if ($versions || $vv!==null) {	// load all versions of this sentence
@@ -587,11 +478,12 @@ MWEAnnotator.prototype.identifyTargets = function() {
 		var $control = $('<textarea/>').attr({"id": "mwe_"+itemId, "name": "mwe[]", 
 										  "rows": "3", "cols": "80",
 										  "readonly": <?= ($readonly) ? 'true' : 'false' ?>}).addClass("input").val(this.initval);
-		
+		if ($control.prop("readonly") && $control.val()==="") $control.hide();
 		var $out1 = $('<input type="hidden" name="sgroups[]" class="sgroups" value=""/>').attr({"id": "sgroups_"+itemId});
 		var $out2 = $('<input type="hidden" name="wgroups[]" class="wgroups" value=""/>').attr({"id": "wgroups_"+itemId});
 		this.target = $control.get(0);
 		$('<p/>').append($control).append($out1).append($out2).insertAfter($sentence);
+		
 		this.ann.submittable = true;
 	};
 	a.listenForInteraction = function() {
@@ -1092,7 +984,7 @@ $(function () {
 		$(this).html('');
 		for (var i=0; i<ww.length; i++) {
 			$('<span>').attr({"id": "i"+j+"w"+i, "class": "w", "data-w": i}).text(ww[i]).appendTo($(this));
-			$(this).append(' ');
+			if (i<ww.length-1) $(this).append(' ');
 		}
 	});
 	
@@ -1158,7 +1050,8 @@ function parseMWEMarkup(s) {
 	}
 	// allow single-character tokens ~ and _, optionally with user-specified indices. (However, a~ ~ ~b and a~ ~$1 ~b should be invalid.)
 	// check validity of ~'s
-	var valid = (s+' ').match(/^(\S |[^~\s]\S*[^~\s] |~(\|\S+)?(\$\S+)? |[^~\s]\S*(~ ([^~\s] |[^~\s]\S*[^~\s] )+~)\S*[^~\s] )+$/)!==null;
+//	var valid = (s+' ').match(/^(\S |[^~\s]\S*[^~\s] |~(\|\S+)?(\$\S+)? |[^~\s]\S*(~ ([^~\s] |[^~\s]\S*[^~\s] )+~)\S*[^~\s] )+$/)!==null;
+	var valid = (s+' ').match(/^(\S |[^~\s]\S*[^~\s] |~(\|\S+)?(\$\S+)? |[^~\s]\S*(~ ([^~\s] |[^~\s]\S*[^~\s] )+~\S*[^~\s])+ )+$/)!==null;
 	if (!valid) {
 	   return 'Invalid use of ~ joiners';
 	}
@@ -1166,7 +1059,8 @@ function parseMWEMarkup(s) {
 	var s2 = s.replace(/(?=\S)~|~(?=\S)/g, ' ')
 	s2 = s2.replace(/\s+/g, ' ', s).trim()
 	// check validity of _'s
-	valid = (s2+' ').match(/^(\S |[^_\s]\S*[^_\s] |_(\|\S+)?(\$\S+)? |[^_\s]\S*(_ ([^_\s] |[^_\s]\S*[^_\s] )+_)\S*[^_\s] )+$/)!==null;
+//	valid = (s2+' ').match(/^(\S |[^_\s]\S*[^_\s] |_(\|\S+)?(\$\S+)? |[^_\s]\S*(_ ([^_\s] |[^_\s]\S*[^_\s] )+_)\S*[^_\s] )+$/)!==null;
+	valid = (s2+' ').match(/^(\S |[^_\s]\S*[^_\s] |_(\|\S+)?(\$\S+)? |[^_\s]\S*(_ ([^_\s] |[^_\s]\S*[^_\s] )+_\S*[^_\s])+ )+$/)!==null;
 	if (!valid) {
 	   return 'Invalid use of _ joiners';
 	}
@@ -1208,7 +1102,8 @@ function parseMWEMarkup(s) {
 				underscoreResume = true;
 			}
 			else if (t=='_ ') {
-				underscoreStartGap = sindexCounter;
+				if (!underscoreResume)	// necessary for structures like a_ b _c_ d _e
+					underscoreStartGap = sindexCounter;
 				sindexCounter++;
 				underscoreResume = false;
 			}
@@ -1221,7 +1116,8 @@ function parseMWEMarkup(s) {
 				tildeResume = true;
 			}
 			else if (t=='~ ') {
-				tildeStartGap = windexCounter;
+				if (!tildeResume)	// necessary for structures like a~ b ~c~ d ~e
+					tildeStartGap = windexCounter;
 				windexCounter++;
 				tildeResume = false;
 			}
@@ -1310,7 +1206,8 @@ function parseMWEMarkup(s) {
 	}
 	
 	//if (grouping.length!=ww.length) console.log(grouping.length, ww.length);
-	  
+	
+	
 	// convert user-specified group indices to integers
 	for (var i=0; i<sgrouping.length; i++) {
 		if (typeof sgrouping[i] !== "number") {
@@ -1381,6 +1278,14 @@ function doSubmit() {
 </head>
 <body<?= ($embedded) ? ' class="embedded"' : '' ?>>
 
+<? if (!$embedded) {
+		$ixqs = $_GET;
+		$ixqs['from'] = 0;
+		$ixurl = 'nanni_items.php?' . http_build_query($ixqs) . "#n$iFrom";
+?>
+	<div class="indexlinks"><a href="<?= $ixurl ?>">item index</a></div>
+<? } ?>
+
 <form id="mainform" action="" method="post">
 
 <? if (count($SENTENCES)==0) { ?><h1 style="text-align: center;">DONE.</h1><? } ?>
@@ -1393,7 +1298,9 @@ function doSubmit() {
 <input type="hidden" name="sentid[]" value="<?= $sid ?>" />
 <input type="hidden" name="initval[]" class="initval" value="<?= $s['initval'] ?>" />
 <input type="hidden" name="initnote[]" class="initnote" value="<?= $s['note'] ?>" />
-<p id="sent_<?= $sid ?>" class="sent"><?= $s['sentence'] ?></p>
+<p id="sent_<?= $sid ?>" class="sent"><? if (!($versions && count($s['versions'])==0)) {
+	echo $s['sentence'];
+} ?></p>
 <!--<p><textarea id="input_<?= $sid ?>" name="annotation" rows="3" cols="80" class="input"><?= $s['sentence'] ?></textarea>
 <input type="hidden" id="sgroups_<?= $sid ?>" name="sgroups" class="sgroups" value="" />
 <input type="hidden" id="wgroups_<?= $sid ?>" name="wgroups" class="wgroups" value="" /></p>-->
@@ -1433,23 +1340,23 @@ function versioncmp($a, $b) {
 	$users = array();
 	foreach ($s['versions'] as $ver) {
 		$parts = explode("\t", $ver);
-		$user = preg_replace('/@.*/', '', $parts[2]);
+		$usr = $parts[2];
 		$mweS = htmlspecialchars($parts[count($parts)-2]);
 		$noteS = htmlspecialchars($parts[count($parts)-1]);
 		$titleS = $mweS . (($noteS) ? "\n\n$noteS" : '');
 		
 		// filter all but the most recent version from each user
-		if ($nooutdated && isset($users[$user])) { continue; }
+		if ($nooutdated && isset($users[$usr])) { continue; }
 
 		
 		echo '<option value="' . htmlspecialchars($ver) . '" title="' . $titleS . '"';
-		if (isset($users[$user])) {
+		if (isset($users[$usr])) {
 			echo ' class="outdated"';
 		}
 		else {
-			$users[$user] = true;
+			$users[$usr] = true;
 		}
-		echo '>' . str_replace(" ", "&nbsp;", str_pad($nver-$iver, strlen(strval($nver)), " ", STR_PAD_LEFT)) . ' &nbsp; ' . date('r', intval($parts[1])) . ' &nbsp; ' . htmlspecialchars($user) . '</option>';
+		echo '>' . str_replace(" ", "&nbsp;", str_pad($nver-$iver, strlen(strval($nver)), " ", STR_PAD_LEFT)) . ' &nbsp; ' . date('r', intval($parts[1])) . ' &nbsp; ' . htmlspecialchars($usr) . '</option>';
 		$iver++;
 	}
 ?></select>
