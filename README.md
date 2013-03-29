@@ -39,6 +39,9 @@ Status: IN DEVELOPMENT
 
 # Possible features
 
+ * `&next` to skip past any items the user has already annotated, if any
+ * `&item=ITEMID` to show an item by its ID
+ * automatic inter-annotator agreement utilities (e.g., skipping items with perfect agreement)
  * searching of items/annotations
  * user groups
  * multiple items per page
@@ -98,3 +101,27 @@ Status: IN DEVELOPMENT
   * `users/USERID/DATASET.nanni`: output file with the user's most recent annotation of each item
   * `users/USERID/DATASET.nanni.all`: output file with all the user's annotations, in 
     chronological order
+
+# Use cases to consider
+
+## Single annotator
+
+- revise one's own most recent tagging
+- list all taggings produced by one annotator for an item, with timestamps
+- filter out problematic items
+- find exactly which inputs, defaults, settings, etc. were behind a given tagging
+- assign a dataset to an annotator
+- datasets with some items in common
+- flagging and correcting problems with input, such as tokenization
+
+## Multiple annotators
+
+- revise another annotator's most recent tagging
+- compare most recent taggings of an item between 2 annotators
+- merge two taggings by negotiation
+- copy taggings from another user only for items never tagged by the current user?
+- indicate which items were annotated cooperatively, or as practice rounds./annotation status
+- regress item annotation time against number of inter-annotator disagreements in the item
+- item history: see how many times an item was reviewed (not necessarily revised), when and by whom
+- skip items that already have N annotations
+
