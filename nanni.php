@@ -180,22 +180,26 @@ if ($iFrom>-1) {
 
 				if (!$new) {	// load user's current version of the sentence, if available
 
-					$v = get_key_value($kv, $sentId);
-//if ($readonly) {	die($kv); }	// TODO: $v is null! this is because $kv refers to the current user, not the user whose version is being displayed
-					if ($v!==null) {
-						$parts = explode("\t", $v);
-						$sentdata['initval'] = htmlspecialchars($parts[count($parts)-2]);
-						$sentdata['note'] = htmlspecialchars($parts[count($parts)-1]);
-
+					
+					if ($readonly) {
+						$sentdata['versions'] = get_key_values(get_user_dir($_REQUEST['versions'])."/$split.nanni", $sentId);
+					}
+					else {
+						$v = get_key_value($kv, $sentId);
+						if ($v!==null) {
+							$parts = explode("\t", $v);
+							$sentdata['initval'] = htmlspecialchars($parts[count($parts)-2]);
+							$sentdata['note'] = htmlspecialchars($parts[count($parts)-1]);
+						}
 					}
 				}
 				if ($versions || $vv!==null) {	// load all versions of this sentence
 					if ($versions && strlen($_REQUEST['versions'])>0) {
 						// filter to a specified user
-						$sentdata['versions'] = get_key_values("users/" . $_REQUEST['versions'] . "/$split.nanni.all", $sentId);
+						$sentdata['versions'] = get_key_values(get_user_dir($_REQUEST['versions']) . "/$split.nanni.all", $sentId);
 					}
 					else {	// all users
-						$sentdata['versions'] = get_key_values("users/*/$split.nanni.all", $sentId);
+						$sentdata['versions'] = get_key_values(get_user_dir('*') . "/$split.nanni.all", $sentId);
 					}
 				}
 				array_push($SENTENCES, $sentdata);
@@ -446,10 +450,15 @@ ItemNoteAnnotator.prototype.identifyTargets = function() {
 										  "placeholder": "Note for sentence "+itemId+" (optional)",
 										  "rows": "1", "cols": "80",
 										  "readonly": <?= ($readonly) ? 'true' : 'false' ?>}).addClass("comment").val(this.initval);
-		if ($control.prop("readonly") && $control.val()==="") $control.hide();
 		this.target = $control.get(0);
 		$('<p/>').append($control).insertAfter($(item).find('p.buttons'));
 		this.ann.submittable = true;
+		if ($control.prop("readonly") && $control.val()==="") $control.hide();
+	}
+	a.rerender = function () {
+		$control = $(this.target);
+		if ($control.prop("readonly") && $control.val()==="") $control.hide();
+		else $control.show();
 	}
 }
 ItemNoteAnnotator.prototype.validate = function() { }
@@ -1304,6 +1313,7 @@ function doSubmit() {
 <!--<p><textarea id="input_<?= $sid ?>" name="annotation" rows="3" cols="80" class="input"><?= $s['sentence'] ?></textarea>
 <input type="hidden" id="sgroups_<?= $sid ?>" name="sgroups" class="sgroups" value="" />
 <input type="hidden" id="wgroups_<?= $sid ?>" name="wgroups" class="wgroups" value="" /></p>-->
+<p style="text-align: center;" class="buttons">
 <? if (!$nonav || !$nosubmit) { 
       $reqarr = $_GET;
       $reqarr['from'] = $iFrom-1;
@@ -1311,15 +1321,14 @@ function doSubmit() {
       $reqarr['from'] = $iFrom+1;
       $nexturl = '?' . http_build_query($reqarr);
 ?>
-<p style="text-align: center;" class="buttons">
   <? if (!$nonav) { ?><input type="button" class="btnprev" value="&laquo; Previous" onclick="document.location='<?= htmlspecialchars($prevurl) ?>'"<?= (($iFrom==0) ? 'disabled="disabled"' : '') ?> /><? } ?>
 	<input type="submit" name="submit" onclick="return doSubmit();" style="white-space: normal;" <? 
       if ($iFrom<0) { ?>value="This is a live demo of the annotation interface. Click here to toggle one possible analysis of this sentence. You can change the analysis by editing the text in the box above."<? } 
    else if ($nonav) { ?>value="Save"<? }
                else { ?>value="Save &amp; continue &raquo;"<? } ?> />
   <? if (!$nonav) { ?><input type="button" class="btnnext" value="Next &raquo;" onclick="document.location='<?= htmlspecialchars($nexturl) ?>'"<?= (($iFrom+1==$iTo) ? 'disabled="disabled"' : '') ?> /><? } ?>
-</p>
 <? } ?>
+</p>
 <!--<p><textarea id="note_<?= $sid ?>" name="note" rows="1" cols="80" class="comment" placeholder="Note for sentence <?= $sid ?> (optional)"></textarea></p>-->
 
 <?

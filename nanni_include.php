@@ -130,7 +130,10 @@ if (isset($_REQUEST['u'])) {	// impersonating another user
 }
 else { $u = $authenticated_user; }
 
-$udir = "users/$u";	// user directory
+function get_user_dir($usr) {
+	return "users/$usr";
+}
+$udir = get_user_dir($u);	// user directory
 $ddir = "data";	// data directory
 $edir = "extra";	// extras directory
 
