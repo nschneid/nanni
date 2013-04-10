@@ -69,13 +69,15 @@ function update_key_value($f, $key, $newval) {
 	$k = "$key$DELIM";
 	$kLen = strlen($k);
 	
-	$outF=fopen($f, 'c');	// open for writing, but don't truncate
+	$outF=fopen($f, 'c');	// open for writing, but don't truncate (yet)
 	if (flock($outF, LOCK_EX)) { // do an exclusive lock
 		$t=tempnam('/tmp', 'NANNI');
 		if (copy($f, $t)===false) {
 			die("couldn't copy $f to $t");
 		}
 		$tempF=fopen($t, 'r');
+		
+		ftruncate($outF, 0);	// now truncate the output file (to prevent trailing data in case it shrinks in size)
 		
 		$oldval = null;
 		while (!feof($tempF)) {
