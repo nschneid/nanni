@@ -1383,7 +1383,7 @@ $(function () {
 	?>
 	<div class="versions">
 		<p style="text-align: center; font-size: small;"><a href="#" onclick="$(this).parent().next('iframe').toggle();"><?= count($s['versions']) ?> versions in history</a></p>
-		<iframe src="<?= htmlspecialchars($_SERVER["REQUEST_URI"]) ?>&amp;versions=<?= preg_replace('/^ /', '', $thisv) ?>&amp;nonav&amp;nosubmit&amp;noinstr&amp;readonly&amp;embedded" 
+		<iframe src="<?= htmlspecialchars($_SERVER["REQUEST_URI"]) ?>&amp;versions=<?= urlencode(preg_replace('/^ /', '', $thisv)) ?>&amp;nonav&amp;nosubmit&amp;noinstr&amp;readonly&amp;embedded" 
 				style="<?= (strlen($thisv)>=1 && substr($thisv,0,1)==' ') ? '' : 'display: none; ' ?>width: 106%; height: 15em; position: relative; left: -2%; border: none; background-color: #eee;"></iframe>
 	</div>
 	<? 
