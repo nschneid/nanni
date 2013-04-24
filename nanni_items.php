@@ -339,6 +339,7 @@ if ($iFrom>-1) {
 					$parts = explode("\t", $v);
 					$timestamp = intval($parts[1]);
 					$time = date('r', $timestamp);
+					$infoJ = json_decode($parts[count($parts)-3]);
 					$anno = htmlspecialchars($parts[count($parts)-2]);
 					$note = htmlspecialchars($parts[count($parts)-1]);
 					$tip = $anno . "\n" . $time;
@@ -346,6 +347,7 @@ if ($iFrom>-1) {
 				}
 				else {
 					$time = '';
+					$infoJ = null;
 					$anno = '';
 					$note = '';
 					$tip = '';
@@ -367,13 +369,23 @@ if ($iFrom>-1) {
 						if ($userId=="@$u") continue;
 						$userOffset = set_default(&$otherusers, $userId, count($otherusers));
 						$time = date('r', $timestamp);
+						$infoJ2 = json_decode($parts[count($parts)-3]);
+						if ($infoJ===null || (count($infoJ->sgroups)==0 && count($infoJ2->sgroups)==0)) {
+							$ndiff = '';
+						}
+						else {
+							$diff1 = array_diff(array_map('json_encode',$infoJ->sgroups),array_map('json_encode',$infoJ2->sgroups));
+							$diff2 = array_diff(array_map('json_encode',$infoJ2->sgroups),array_map('json_encode',$infoJ->sgroups));
+							$ndiff = count($diff1)+count($diff2);
+						}
+
 						$anno = htmlspecialchars($parts[count($parts)-2]);
 						$note = htmlspecialchars($parts[count($parts)-1]);
 						$tip = $anno . "\n" . $time;
 						if ($note)
 							$tip .= "\n" . $note;
 						$status = ($timestamp<(mktime()-24*60*60)) ? 'sAnn' : 'sRecent';
-?><span class="user usr<?= $userOffset ?> <?= $status ?><?= ($note) ? ' hasnote' : '' ?>" title="<?= $tip ?>"><?= $userId ?></span> <?
+?><span class="user usr<?= $userOffset ?> <?= $status ?><?= ($note) ? ' hasnote' : '' ?>" title="<?= $tip ?>"><?= $userId ?></span><sub><?= $ndiff ?></sub> <?
 					}
 ?></td></tr>
 <?
