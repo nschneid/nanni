@@ -339,7 +339,7 @@ if ($iFrom>-1) {
 					$parts = explode("\t", $v);
 					$timestamp = intval($parts[1]);
 					$time = date('r', $timestamp);
-					$infoJ = json_decode($parts[count($parts)-3]);
+					$infoJ = json_decode(str_replace("\\'", "'", $parts[count($parts)-3]));
 					$anno = htmlspecialchars($parts[count($parts)-2]);
 					$note = htmlspecialchars($parts[count($parts)-1]);
 					$tip = $anno . "\n" . $time;
@@ -369,7 +369,7 @@ if ($iFrom>-1) {
 						if ($userId=="@$u") continue;
 						$userOffset = set_default(&$otherusers, $userId, count($otherusers));
 						$time = date('r', $timestamp);
-						$infoJ2 = json_decode($parts[count($parts)-3]);
+						$infoJ2 = json_decode(str_replace("\\'", "'", $parts[count($parts)-3]));
 						if ($infoJ===null || (count($infoJ->sgroups)==0 && count($infoJ2->sgroups)==0)) {
 							$ndiff = '';
 						}
