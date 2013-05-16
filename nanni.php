@@ -1283,7 +1283,7 @@ function doSubmit() {
 	return ann_submit();
 }
 </script>
-<title>Multiword Expression Annotation (<?= $_SERVER['REMOTE_USER'] ?> as <?= $u ?>)</title>
+<title>Multiword Expression Annotation: #<?= $iFrom ?> in <?= $split ?> (<?= $_SERVER['REMOTE_USER'] ?> as <?= $u ?>)</title>
 </head>
 <body<?= ($embedded) ? ' class="embedded"' : '' ?>>
 
