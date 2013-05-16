@@ -123,10 +123,12 @@ function set_default($arr, $key, $default) {
 $user = $_SERVER['REMOTE_USER'];
 $authenticated_user = preg_replace('/\s+/', '-', preg_replace('/@.*/', '',  $user));	// user alias (no @domain.edu)
 
+$issuperuser = ($authenticated_user=='nschneid');
+
 if (isset($_REQUEST['u'])) {	// impersonating another user
 	$u = $_REQUEST['u'];
 	if (strpos($u, '@')!==false) { die("Invalid user ID: $u"); }
-	else if ($authenticated_user!='nschneid' && strpos("+$u+", "+$authenticated_user+")===false) {
+	else if (!$issuperuser && strpos("+$u+", "+$authenticated_user+")===false) {
 		die("Authenticated user $authenticated_user cannot log in as $u");
 	}
 }
