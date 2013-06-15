@@ -2,6 +2,9 @@
 // session_start();	// has started hanging... :(
  echo '<!DOCTYPE html>'; 
 
+error_reporting(0);
+ini_set('display_errors', 'On');
+
 /**
 Nanni: Nice Annotation Interface
 
@@ -78,6 +81,7 @@ $new = array_key_exists('new', $_REQUEST);
 $nonav = array_key_exists('nonav', $_REQUEST);
 $nosubmit = array_key_exists('nosubmit', $_REQUEST);
 $vv = isset($_REQUEST['v']) ? $_REQUEST['v'] : null;	// invoke version browser(s) in an iframe
+$reconcile = isset($_REQUEST['reconcile']) ? $_REQUEST['reconcile'] : null;	// 2 users whose annotations should be reconciled
 $versions = array_key_exists('versions', $_REQUEST);	// the version browser itself
 $instructionsCode = (array_key_exists('inst', $_REQUEST)) ? $_REQUEST['inst'] : '';
 $instructions = "mwe_ann_instructions$instructionsCode.md";
@@ -124,11 +128,13 @@ if ($iFrom>-1) {
 		//$note = htmlspecialchars_decode(stripslashes($note), ENT_QUOTES);
 		
 		for ($I=0; $I<count($_REQUEST['sentid']); $I++) {
-			$mwe = trim(preg_replace('/\s+/', ' ',  $_REQUEST['mwe'][$I]));
-			$note = trim(preg_replace('/\s+/', ' ',  $_REQUEST['note'][$I]));
+			$mwe = trim(preg_replace('/\s+/', ' ', $_REQUEST['mwe'][$I]));
+			$note = trim(preg_replace('/\s+/', ' ', $_REQUEST['note'][$I]));
 			$key = $_REQUEST['sentid'][$I];
-			$initval = addslashes($_REQUEST['initval'][$I]);
-			$val = $_REQUEST['loadtime'] . "\t" . mktime() . "\t@$u\t$ann\t{\"initval\": \"$initval\",   \"sgroups\": " . $_REQUEST['sgroups'][$I] . ",   \"wgroups\": " . $_REQUEST['wgroups'][$I] . (($prep) ? ",   \"preps:\" " . $_REQUEST['preps'][$I] : '') . ",   \"url\": \"" . $_SERVER["SERVER_NAME"].$_SERVER["REQUEST_URI"] . "\",   \"session\": \"" . session_id() . "\",  \"authuser\": \"$user\"}\t$mwe\t$note\n";
+			$avals = '"initval": "' . addslashes($_REQUEST['initval'][$I]) . '",';
+			if (array_key_exists('beforeVExpand', $_REQUEST))	// annotation prior to clicking the "versions" link
+				$avals .= '  "beforeVExpand": "' .  preg_replace('/\s+/', ' ', trim(addslashes($_REQUEST['beforeVExpand'][$I]))) . '",';
+			$val = $_REQUEST['loadtime'] . "\t" . mktime() . "\t@$u\t$ann\t{{$avals}   \"sgroups\": " . $_REQUEST['sgroups'][$I] . ",   \"wgroups\": " . $_REQUEST['wgroups'][$I] . (($prep) ? ",   \"preps:\" " . $_REQUEST['preps'][$I] : '') . ",   \"url\": \"" . $_SERVER["SERVER_NAME"].$_SERVER["REQUEST_URI"] . "\",   \"session\": \"" . session_id() . "\",  \"authuser\": \"$user\"}\t$mwe\t$note\n";
 			fwrite($tagF, "$key\t$val");
 			update_key_value($kv, $key, $val);
 		}
@@ -164,7 +170,10 @@ if ($iFrom>-1) {
 		while (($entry = fgets($f)) !== false) {
 			if ($l >= $iFrom) {
 				if (($iTo>-1 && $l >= $iTo) || $l >= ($iFrom+$perpage)) break;
-	
+				
+				//$entryRaw = explode("\t", $entry);
+				//$tokenizedSRaw = $entry[1];	// no HTML escaping (# in entities screws things up)
+				
 				$entry = htmlspecialchars($entry, ENT_QUOTES);	
 				$entry = explode("\t", $entry);
 				$sentId = $entry[0];
@@ -193,6 +202,21 @@ if ($iFrom>-1) {
 						}
 					}
 				}
+				
+				if ($reconcile!==null && !isset($sentdata['initval'])) {
+					$Adata = get_key_value(get_user_dir($reconcile[0]) . "/$split.nanni", $sentId);
+					$Aparts = explode("\t", $Adata);
+					$A = htmlspecialchars($Aparts[count($Aparts)-2], ENT_QUOTES);
+					
+					$Bdata = get_key_value(get_user_dir($reconcile[1]) . "/$split.nanni", $sentId);
+					$Bparts = explode("\t", $Bdata);
+					$B = htmlspecialchars($Bparts[count($Bparts)-2], ENT_QUOTES);
+					
+					$sentdata['reconcile'] = array($A, $B);
+					$sentdata['recon'] = reconcile($tokenizedS, $A, $B);
+					$sentdata['initval'] = reconcile($tokenizedS, $A, $B);
+				}
+				
 				if ($versions || $vv!==null) {	// load all versions of this sentence
 					if ($versions && strlen($_REQUEST['versions'])>0) {
 						// filter to a specified user
@@ -1307,6 +1331,7 @@ function doSubmit() {
 <input type="hidden" name="sentid[]" value="<?= $sid ?>" />
 <input type="hidden" name="initval[]" class="initval" value="<?= $s['initval'] ?>" />
 <input type="hidden" name="initnote[]" class="initnote" value="<?= $s['note'] ?>" />
+<input type="hidden" name="beforeVExpand[]" class="beforeVExpand" value="" />
 <p id="sent_<?= $sid ?>" class="sent"><? if (!($versions && count($s['versions'])==0)) {
 	echo $s['sentence'];
 } ?></p>
@@ -1382,7 +1407,7 @@ $(function () {
 		  foreach (((is_array($vv)) ? $vv : array($vv)) as $thisv) {
 	?>
 	<div class="versions">
-		<p style="text-align: center; font-size: small;"><a href="#" onclick="$(this).parent().next('iframe').toggle();"><?= count($s['versions']) ?> versions in history</a></p>
+		<p style="text-align: center; font-size: small;"><a href="#" onclick="$('a').eq(1).parent().parent().siblings('.beforeVExpand').val($('a').eq(1).parent().parent().siblings().find('.input').val()); $(this).parent().next('iframe').toggle();"><?= count($s['versions']) ?> versions in history</a></p>
 		<iframe src="<?= htmlspecialchars($_SERVER["REQUEST_URI"]) ?>&amp;versions=<?= urlencode(preg_replace('/^ /', '', $thisv)) ?>&amp;nonav&amp;nosubmit&amp;noinstr&amp;readonly&amp;embedded" 
 				style="<?= (strlen($thisv)>=1 && substr($thisv,0,1)==' ') ? '' : 'display: none; ' ?>width: 106%; height: 15em; position: relative; left: -2%; border: none; background-color: #eee;"></iframe>
 	</div>
