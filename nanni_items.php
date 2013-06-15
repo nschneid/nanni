@@ -57,8 +57,10 @@ div.item { max-width: 40em; margin-left: auto; margin-right: auto; }
 #items { border-collapse: collapse; }
 #items th,#items td { padding: 2px; }
 #items th.num { text-align: right; padding-right: 0.5em; color: #aaa; font-weight: normal; }
+#items td.note:empty { border: none; }
 #items td.note:not(:empty) { border: solid 1px #000; }
 #items tr:hover { background-color: #eee; }
+.user { color: #000; background-color: #000; }
 .usr0 { color: #c3f; background-color: #c3f; }
 .usr1 { color: #09f; background-color: #09f; }
 .usr2 { color: #e70; background-color: #e70; }
