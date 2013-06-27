@@ -377,7 +377,7 @@ if ($iFrom>-1) {
 						$userOffset = set_default(&$otherusers, $userId, count($otherusers));
 						$time = date('r', $timestamp);
 						$infoJ2 = json_decode(str_replace("\\'", "'", $parts[count($parts)-3]));
-						if ($infoJ===null || (count($infoJ->sgroups)==0 && count($infoJ2->sgroups)==0)) {
+						if ($infoJ===null || (count($infoJ->sgroups)==0 && count($infoJ2->sgroups)==0 && count($infoJ->wgroups)==0 && count($infoJ2->wgroups)==0)) {
 							$ndiff = '';
 						}
 						else {
