@@ -240,7 +240,7 @@ $authenticated_alias = $u;
 if (isset($_REQUEST['u'])) {	// impersonating another user
 	$u = $_REQUEST['u'];
 	if (strpos($u, '@')!==false) { die("Invalid user ID: $u"); }
-	else if (!$issuperuser && strpos("+$u+", "+$authenticated_alias+")===false && !($u=='consensus' && $authenticated_alias=='sonuffer')) {
+	else if (!$issuperuser && strpos("+$u+", "+$authenticated_alias+")===false /*&& !($u=='consensus' && $authenticated_alias=='sonuffer')*/) {
 		die("Authenticated user $authenticated_user ($authenticated_alias) cannot log in as $u");
 	}
 }

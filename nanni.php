@@ -67,6 +67,8 @@ body.embedded textarea { background-color: transparent; }
 
 .indexlinks { position: fixed; bottom: 10px; right: 10px; }
 .indexlinks a { color: #aaa; font-variant: small-caps; }
+
+textarea[readonly].comment { background-color: #ffc !important; }
 </style>
 
 <?
