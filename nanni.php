@@ -78,8 +78,15 @@ textarea[readonly].comment { background-color: #ffc !important; }
 include_once('nanni_include.php');
 
 $init_stage = (array_key_exists('initialStage', $_REQUEST)) ? $_REQUEST['initialStage'] : '0';
-$prep = array_key_exists('prep', $_REQUEST);
-$new = array_key_exists('new', $_REQUEST);
+
+// extra forms of annotation
+$prep = array_key_exists('prep', $_REQUEST);	// prepositions
+$nsst = array_key_exists('nsst', $_REQUEST);	// noun supersenses
+$vsst = array_key_exists('vsst', $_REQUEST);	// verb supersenses
+
+$new = $_REQUEST['new'];
+if (!$new)
+	$new = array_key_exists('new', $_REQUEST);
 $nonav = array_key_exists('nonav', $_REQUEST);
 $nosubmit = array_key_exists('nosubmit', $_REQUEST);
 $vv = isset($_REQUEST['v']) ? $_REQUEST['v'] : null;	// invoke version browser(s) in an iframe
@@ -136,7 +143,8 @@ if ($iFrom>-1) {
 			$avals = '"initval": "' . addslashes($_REQUEST['initval'][$I]) . '",';
 			if (array_key_exists('beforeVExpand', $_REQUEST))	// annotation prior to clicking the "versions" link
 				$avals .= '  "beforeVExpand": "' .  preg_replace('/\s+/', ' ', trim(addslashes($_REQUEST['beforeVExpand'][$I]))) . '",';
-			$val = $_REQUEST['loadtime'] . "\t" . mktime() . "\t@$u\t$ann\t{{$avals}   \"sgroups\": " . $_REQUEST['sgroups'][$I] . ",   \"wgroups\": " . $_REQUEST['wgroups'][$I] . (($prep) ? ",   \"preps:\" " . $_REQUEST['preps'][$I] : '') . ",   \"url\": \"" . $_SERVER["SERVER_NAME"].$_SERVER["REQUEST_URI"] . "\",   \"session\": \"" . session_id() . "\",  \"authuser\": \"$user\"}\t$mwe\t$note\n";
+			$chklbls = ($_REQUEST['chklbls']) ? $_REQUEST['chklbls'][$I] : '{}';
+			$val = $_REQUEST['loadtime'] . "\t" . mktime() . "\t@$u\t$ann\t{{$avals}   \"sgroups\": " . $_REQUEST['sgroups'][$I] . ",   \"wgroups\": " . $_REQUEST['wgroups'][$I] . (($prep) ? ",   \"preps\": " . $_REQUEST['preps'][$I] : '') . (($nsst || $vsst) ? ",   \"chklbls\": $chklbls" : '') . ",   \"url\": \"" . $_SERVER["SERVER_NAME"].$_SERVER["REQUEST_URI"] . "\",   \"session\": \"" . session_id() . "\",  \"authuser\": \"$user\"}\t$mwe\t$note\n";
 			fwrite($tagF, "$key\t$val");
 			update_key_value($kv, $key, $val);
 		}
@@ -189,9 +197,18 @@ if ($iFrom>-1) {
 	
 				$sentdata = array('sentence' => trim($tokenizedS), 'sentenceId' => $sentId);
 
-				if (!$new) {	// load user's current version of the sentence, if available
 
+				if ($reconcile!==null) {
+					$Adata = get_key_value(get_user_dir($reconcile[0]) . "/$split.nanni", $sentId);
+					$Aparts = explode("\t", $Adata);
+					$Atstamp = intval($Aparts[1]);
 					
+					$Bdata = get_key_value(get_user_dir($reconcile[1]) . "/$split.nanni", $sentId);
+					$Bparts = explode("\t", $Bdata);
+					$Btstamp = intval($Bparts[1]);
+				}
+
+				if (!$new || $new==='^') {	// load user's current version of the sentence, if applicable
 					if ($readonly) {
 						$sentdata['versions'] = get_key_values(get_user_dir($_REQUEST['versions'])."/$split.nanni", $sentId);
 					}
@@ -199,24 +216,38 @@ if ($iFrom>-1) {
 						$v = get_key_value($kv, $sentId);
 						if ($v!==null) {
 							$parts = explode("\t", $v);
-							$sentdata['initval'] = htmlspecialchars($parts[count($parts)-2]);
-							$sentdata['note'] = htmlspecialchars($parts[count($parts)-1]);
+							$tstamp = intval($parts[1]);
+							if (!$new || $reconcile===null || $tstamp >= $Atstamp || $tstamp >= $Btstamp) {
+								// use this user's current saved version
+								$sentdata['initval'] = htmlspecialchars($parts[count($parts)-2]);
+								$sentdata['note'] = htmlspecialchars($parts[count($parts)-1]);
+								$sentJ = json_decode(str_replace("\\'", "'", $parts[count($parts)-3]), true);
+								if ($sentJ['chklbls']) {
+									$sentdata['chklbls'] = htmlspecialchars(json_encode($sentJ['chklbls']), ENT_QUOTES);
+									if (!array_key_exists('initialStage', $_REQUEST)) // unless a particular start stage is forced, make it '1' because there are already chunk labels
+										$init_stage = '1';
+								}
+							}
 						}
 					}
 				}
 				
+				if ($nsst || $vsst) {	// load POS tags
+					$posJS = get_key_value("$pdir/$split.pos.json", $sentId, false);
+					$sentdata['pos'] = htmlspecialchars($posJS, ENT_QUOTES);
+				}
+				
 				if ($reconcile!==null && !isset($sentdata['initval'])) {
-					$Adata = get_key_value(get_user_dir($reconcile[0]) . "/$split.nanni", $sentId);
-					$Aparts = explode("\t", $Adata);
-					$A = htmlspecialchars($Aparts[count($Aparts)-2], ENT_QUOTES);
+					// TODO: this ignores label annotations!
 					
-					$Bdata = get_key_value(get_user_dir($reconcile[1]) . "/$split.nanni", $sentId);
-					$Bparts = explode("\t", $Bdata);
+					$A = htmlspecialchars($Aparts[count($Aparts)-2], ENT_QUOTES);
 					$B = htmlspecialchars($Bparts[count($Bparts)-2], ENT_QUOTES);
 					
 					$sentdata['reconcile'] = array($A, $B);
 					$sentdata['recon'] = reconcile($tokenizedS, $A, $B);
 					$sentdata['initval'] = reconcile($tokenizedS, $A, $B);
+					if ($sentdata['initval']==='') 
+						$sentdata['initval'] = '#cannot-auto-reconcile#';
 				}
 				
 				if ($versions || $vv!==null) {	// load all versions of this sentence
@@ -245,6 +276,7 @@ else if ($iFrom==-1) {	// demo mode
 <script type="text/javascript" language="javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
 <script type="text/javascript" language="javascript" src="https://jquery-json.googlecode.com/files/jquery.json-2.3.min.js"></script>
 <script type="text/javascript" language="javascript" src="http://code.jquery.com/ui/1.9.2/jquery-ui.js"></script>
+<script type="text/javascript" language="javascript" src="jquery.ui.autocomplete.html.js"></script>
 <script type="text/javascript" language="javascript" src="sisyphus.min.js"></script>
 <script type="text/javascript">
 
@@ -544,6 +576,98 @@ MWEAnnotator.prototype.isGrouped = function(tknOffset, strength) {
 	var classes = ' '+$(this.item).find('.sent .w[data-w='+tknOffset+']').attr("class");
 	return ((strong && classes.indexOf(' slu')>-1) || (weak && classes.indexOf(' wlu')>-1));
 }
+
+/* poses (optional): list of POSes for the sentence; 
+posFilter (optional): string that must be a prefix of the POS tag of some element in the chunk */
+MWEAnnotator.prototype.isChunkBeginner = function(tknOffset, strength, poses, posFilter) {
+	if (arguments.length<2) strength = 'both';
+	if (arguments.length<3) poses = null;
+	if (arguments.length<4) posFilter = '';
+	if (!this.isGrouped(tknOffset, strength)) {
+		return (poses===null || poses[tknOffset].indexOf(posFilter)==0);
+	}
+	// strength is one of ('strong', 'weak', 'both')
+	var strong = (strength=='strong' || strength=='both');
+	var weak = (strength=='weak' || strength=='both');
+	var thistok = $(this.item).find('.sent .w[data-w='+tknOffset+']');
+	var classes = ' '+thistok.attr("class");
+	var sb = wb = false;
+	if (strong && classes.indexOf(' slu')>-1) {
+		sb = $(this.item).find('.sent .w.slu'+thistok.data("slu")).eq(0).data("w");
+		if (sb!=tknOffset) return false;
+		sb = ($(this.item).find('.sent .w.slu'+thistok.data("slu")).filter(function (j) {
+				return (poses===null || poses[$(this).data("w")].indexOf(posFilter)==0);
+			}).length>0);
+	}
+	if (weak && classes.indexOf(' wlu')>-1) {
+		wb = $(this.item).find('.sent .w.wlu'+thistok.data("wlu")).eq(0).data("w");
+		if (wb!=tknOffset) return false;
+		wb = ($(this.item).find('.sent .w.wlu'+thistok.data("wlu")).filter(function (j) {
+				return (poses===null || poses[$(this).data("w")].indexOf(posFilter)==0);
+			}).length>0);
+	}
+	return (sb || wb);
+}
+MWEAnnotator.prototype.nextInChunk = function(tknOffset, strength) {
+	if (arguments.length<2) strength = 'both';
+	if (!this.isGrouped(tknOffset, strength))
+		return true;
+	// strength is one of ('strong', 'weak', 'both')
+	var strong = (strength=='strong' || strength=='both');
+	var weak = (strength=='weak' || strength=='both');
+	var thistok = $(this.item).find('.sent .w[data-w='+tknOffset+']');
+	var classes = ' '+thistok.attr("class");
+	var sb = wb = -1;
+	if (strong && classes.indexOf(' slu')>-1) {
+		var sgroups = $(this.item).find('.sent .w.slu'+thistok.data("slu")).filter(function (j) {
+			return $(this).data("w")>tknOffset;
+		}).eq(0).data("w");
+	}
+	if (weak && classes.indexOf(' wlu')>-1) {
+		wb = $(this.item).find('.sent .w.wlu'+thistok.data("wlu")).filter(function (j) {
+			return $(this).data("w")>tknOffset;
+		}).eq(0).data("w");
+	}
+	return (sb==tknOffset && wb==tknOffset);
+}
+MWEAnnotator.prototype.isChunkSegmentEnder = function(tknOffset, strength) {
+	if (arguments.length<2) strength = 'both';
+	if (!this.isGrouped(tknOffset, strength))
+		return true;
+	// strength is one of ('strong', 'weak', 'both')
+	var strong = (strength=='strong' || strength=='both');
+	var weak = (strength=='weak' || strength=='both');
+	var thistok = $(this.item).find('.sent .w[data-w='+tknOffset+']');
+	var classes = ' '+thistok.attr("class");
+	var nexttok = $(this.item).find('.sent .w[data-w='+(tknOffset+1)+']');
+	if (strong && classes.indexOf(' slu')>-1) {
+		if (nexttok.data("slu")==thistok.data("slu"))
+			return false;
+	}
+	if (weak && classes.indexOf(' wlu')>-1) {
+		if (nexttok.data("wlu")==thistok.data("wlu"))
+			return false;
+	}
+	return true;
+}
+MWEAnnotator.prototype.isChunkEnder = function(tknOffset, strength) {
+	if (arguments.length<2) strength = 'both';
+	if (!this.isGrouped(tknOffset, strength))
+		return true;
+	// strength is one of ('strong', 'weak', 'both')
+	var strong = (strength=='strong' || strength=='both');
+	var weak = (strength=='weak' || strength=='both');
+	var thistok = $(this.item).find('.sent .w[data-w='+tknOffset+']');
+	var classes = ' '+thistok.attr("class");
+	var sb = wb = tknOffset;
+	if (strong && classes.indexOf(' slu')>-1) {
+		sb = $(this.item).find('.sent .w.slu'+thistok.data("slu")).eq(-1).data("w");
+	}
+	if (weak && classes.indexOf(' wlu')>-1) {
+		wb = $(this.item).find('.sent .w.wlu'+thistok.data("wlu")).eq(-1).data("w");
+	}
+	return (sb==tknOffset && wb==tknOffset);
+}
 MWEAnnotator.prototype.validate = function() {
 	var x = parseMWEMarkup($('.item .input').val());
 	if (typeof x==="string") {
@@ -665,7 +789,42 @@ MWEAnnotator.prototype.validate = function() {
     A predefined list of labels may be used for suggesting and/or constraining the annotations. */
 function TokenLabelAnnotator(I, itemId) {
 	this._name = 'TokenLabelAnnotator';
-	this.labels = ['LOCATION', 'PERSON', 'TIME', 'GROUP', 'OTHER'];
+	this.labelShortcuts = {
+		'LOCATION': 'L', 
+		'PERSON': 'P', 
+		'TIME': 'T', 
+		'GROUP': 'G', 
+		'ANIMAL': 'N', 
+		'FOOD': 'D', 
+		'PLANT': 'Y', 
+		'BODY': 'B', 
+		'FEELING': 'F', 
+		'ARTIFACT': 'A', 
+		'NATURAL OBJECT': 'O',
+		'SUBSTANCE': '$', 
+		'COGNITION': '^', 
+		'COMMUNICATION': 'C', 
+		'PHENOMENON': 'X', 
+		'PROCESS': 'R', 
+		'ATTRIBUTE': '@', 
+		'RELATION': '=', 
+		'MOTIVE': 'M', 
+		'POSSESSION': 'H', 
+		'SHAPE': '+', 
+		'QUANTITY': 'Q', 
+		'ACT': '!', 
+		'EVENT': 'E', 
+		'STATE': 'S', 
+		'OTHER': '_',
+		//'-': 'not a noun',
+		//'<': 'continues an entity',
+		//'?': 'unsure'
+		'?': '?', 
+		'`': '`'};
+	this.labels = Object.keys(this.labelShortcuts); //['LOCATION', 'PERSON', 'TIME', 'GROUP', 'OTHER', '?', '`'];
+	this.labeldescriptions = {'OTHER': 'miscellaneous tag',
+		'?': '(unsure; you can also tentatively specify one or more possibilities by following them with ?)', 
+		'`': '(skip for now)'};
 	if (arguments.length == 0) return; // stop -- necessary for inheritance
 	
 	Annotator(this, I, itemId);
@@ -676,6 +835,7 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 	a.word = wordelt;
 	a.tokenOffset = wordOffset;
 	a.labels = this.labels;
+	a.labelShortcuts = this.labelShortcuts;
 	a.labeldescriptions = this.labeldescriptions;
 	this.actors.push(a);
 	a.getValue = function () {
@@ -684,12 +844,40 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 	a.firstrender = function () {
 		var theactor = this;
 		var word = this.word;
+		var $word = $(word);
 		var wordId = $(this.word).attr("id");
+		
+		var labelsWithShortcuts = [];
+		for (var i=0; i<this.labels.length; i++) {
+			var shortcut = this.labelShortcuts[this.labels[i]];
+			labelsWithShortcuts.push({"label": (shortcut) ? '<tt style="background-color: #555; margin-left: -5px; padding: 2px; border-radius: 4px; color: #fff;">'+shortcut+'</tt>' + ' ' + this.labels[i] : this.labels[i], 
+									  "value": this.labels[i],
+									  "shortcut": shortcut});
+		}
+		
 		// http://api.jqueryui.com/autocomplete/
 		// TODO: depending on defaults/preannotations, set placeholder for preps belonging to an MWE
 		var $control = $('<input class="tokenlabel" />').attr({"id": "toktag_"+this.ann.itemId+"_"+wordId.replace(/^i\d+/, ''), 
-			"name": "tag_"+this.ann.itemId+"_"+wordId.replace(/^i\d+/, '')}).autocomplete({ source: this.labels, 
-			autoFocus: true, minLength: 0, 
+			"name": "tag_"+this.ann.itemId+"_"+wordId.replace(/^i\d+/, '')}).autocomplete({ 
+			source: labelsWithShortcuts, 
+			/*source: function( request, response ) {
+				var matcher = new RegExp( "^" + $.ui.autocomplete.escapeRegex( request.term ), "i" );
+				response( $.grep( tags, function( item ){
+					return matcher.test( item );
+				}) );
+			}*/
+			response: function (event, ui) {
+				var v = event.target.value;
+				// if entered text exactly matches the shortcut of one of the labels (case-sensitive), move it to the top of the list
+				for (var i=0; i<ui.content.length; i++) {
+					if (ui.content[i].shortcut==v) {
+						ui.content.unshift(ui.content.splice(i,1)[0]);
+						//ui.content[0].label = $('<div></div>').append(ui.content[0].label).find('tt').css("color", '#0ff').parentsUntil().eq(-1).html();
+						break;
+					}
+				}
+			},
+			autoFocus: true, minLength: 0, html: true, 	// the html option uses an extension script
 			focus: function (evt, ui) {	// apply tooltip to focused menu item
 				var v = ui.item.value;
 				if (theactor.labeldescriptions && theactor.labeldescriptions[v]!==undefined)
@@ -717,10 +905,13 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 				if (evt.keyCode===undefined || evt.keyCode==13)	// clicked or pressed Enter
 					$('input').eq($('input').index($(this))+1).focus();	// advance focus to next <input> element
 			} }).keyup(function (evt) { if ($(this).val().charAt(0)=='?') $(this).autocomplete("close"); });
+			
+		if (this.initval)
+			$control.val(this.initval);
+		
 		this.target = $control.get(0);
-		var wordWidth = $(word).outerWidth();
-		var width = Math.max($control.outerWidth(),wordWidth);
-		$(word).append($control);
+		var width = this.ann.computeVisibleWidth(this, $control, $word);
+		$word.append($control);
 
 		this.submittable = true;
 		
@@ -729,17 +920,18 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 		
 		this.aparecium = function () {
 			$control.show();
-			$(word).css("width", width);
+			$word.css("width", this.ann.computeVisibleWidth(this, $control, $word));
 		}
 		this.evanesco = function () {
 			$control.hide();
-			$(word).css("width", "inherit");
+			$word.css("width", "inherit");
 		}
 		
 		this.evanesco();
 			
 		this.start = function () {
-			this.aparecium();
+			if (this.submittable)
+				this.aparecium();
 			this.ann.constructor.started = true;
 		}
 		this.stop = function () {
@@ -748,6 +940,10 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 		}
 	}
 	return a;
+}
+/* The width that the *word* should have when the control is visible */
+TokenLabelAnnotator.prototype.computeVisibleWidth = function($control, $word) {
+	return Math.max($control.outerWidth(),$word.outerWidth());
 }
 TokenLabelAnnotator.prototype.identifyTargets = function() {
 	var theann = this;
@@ -912,15 +1108,122 @@ PrepTokenAnnotator.prototype.validate = function() {
 	$(this.target).val($.toJSON(preps));
 }
 
+ChunkLabelAnnotator.prototype = new TokenLabelAnnotator();
+ChunkLabelAnnotator.prototype.constructor = ChunkLabelAnnotator;
 function ChunkLabelAnnotator(I, itemId) {
+	TokenLabelAnnotator.call(this, I, itemId);
 	this._name = 'ChunkLabelAnnotator';
 	this.actors = [];
+	this.pos = $.parseJSON($(this.item).find('input.pos').val());
+}
+ChunkLabelAnnotator.prototype.computeVisibleWidth = function(a, $control, $word) {
+	if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkSegmentEnder(a.tokenOffset, 'strong')) {
+		return Math.max($control.outerWidth(),$word.outerWidth());
+	}
+	return "inherit";	// the chunk has multiple words, so don't make extra room for the control
+}
+ChunkLabelAnnotator.prototype.start = function() {
+	for (var j=0; j<this.actors.length; j++) {
+		this.actors[j].pos = this.pos[this.actors[j].tokenOffset];
+	}
+	this.updateTargets();
+	for (var j=0; j<this.actors.length; j++) {
+		this.actors[j].start();
+	}
+	this.started = true;
+}
+ChunkLabelAnnotator.prototype.identifyTargets = function() {
+	var theann = this;
+	
+	// create a hidden field for aggregating all the values of individual actors
+	var item = this.item;
+	var $sentence = $(item).find('p.sent');
+	var $out = $(item).find('input.chklbls').attr({"id": "chklbls_"+this.itemId});
+	$out.insertAfter($sentence);
+	this.target = $out.get(0);
+	
+	// create individual actors
+	decorateActor = function (a) {
+		a.initValue = function () {	// look for previously saved value
+			if (this.ann.target.value) {
+				var v = $.parseJSON(this.ann.target.value)[this.tokenOffset];
+				if (v) {
+					v = v.split('|');
+					this.initval = v[v.length-1];
+				}
+			}
+			return Actor.prototype.initValue.call(this);
+		}
+	
+		a.validate = function () {
+			var v = this.getValue();
+			var theactor = this;
+			var errstatus = function() {
+				if (v.trim()==="") {
+					return '';	// don't worry about empty values. The "required" attribute is used to block submission of illegally empty fields.
+				}
+				else if (theactor.labels.indexOf(v)==-1 && v.charAt(0)!='?') {
+					if (v.charAt(v.length-1)!='?')
+						return 'Tag must be drawn from the predefined label list, or begin or end with "?"';
+					else {	// LABEL? or LABEL1,LABEL2? etc.
+						var parts = v.substring(0,v.length-1).split(',');
+						for (var p=0; p<parts.length; p++) {
+							var part = parts[p];
+							if (theactor.labels.indexOf(part)==-1)
+								return 'Invalid label in tag: "'+part+'" (tags ending in "?" must contain 0 or more comma-separated labels from the predefined list)';
+						}
+					}
+				}
+				// OK
+				return '';
+			}();
+			
+			if (errstatus!=='')
+				$(this.target).removeAttr("title");	// remove title text to make room for error message
+			this.target.setCustomValidity(errstatus);
+		};
+	};
+	
+	$(this.item).find('.sent .w').each(function (w) {
+		var a = theann._makeTarget(this,w);
+		decorateActor(a);
+		$(this).addClass("chklblTarget");
+	});
+	
+	theann.submittable = true;
+}
+ChunkLabelAnnotator.prototype.updateTargets = function(updateInfo) {
+	var theann = this;
+	$.each(this.actors, function (j, a) {
+		// update defaults to reflect the current MWE analysis
+		if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, theann.posFilter)) {
+			$(a.target).prop("disabled","").prop("required","required");
+			a.submittable = true;
+			if (theann.constructor.started) a.aparecium();
+			//$(a.target).attr("placeholder", "X").removeAttr("required");
+		}
+		else {
+			$(a.target).prop("disabled","disabled").prop("required","");
+			if (!a.target.value)	// save existing values even if disabled! e.g. previous noun labels during verb labeling
+				a.submittable = false;
+			if (theann.constructor.started) a.evanesco();
+			//$(a.target).removeAttr("placeholder").attr("required","required");
+		}
+	});
+}
+ChunkLabelAnnotator.prototype.validate = function() {
+	var lbls = {};
+	$.each(this.actors, function (j, a) {
+		a.validate();
+		var tag = a.getValue();
+		if (tag!=='' && a.submittable)	// don't include empty tags
+			lbls[a.tokenOffset] = $(a.word).text() + '|' + (tag || $(a.target).attr("placeholder") || '');
+	});
+	$(this.target).val($.toJSON(lbls));
 }
 
-
-
 // global variables for the annotation protocol
-annotators = [ItemNoteAnnotator, MWEAnnotator <?= (($prep) ? ', PrepTokenAnnotator' : '') ?>];	//, ChunkLabelAnnotator];
+annotators = [ItemNoteAnnotator, MWEAnnotator <?= (($prep) ? ', PrepTokenAnnotator' : '') ?> <?= (($nsst || $vsst) ? ', ChunkLabelAnnotator' : '') ?>];	//, ChunkLabelAnnotator];
 II = []; // item offset on page => DOM node
 AA = []; // annotators for each item
 
@@ -928,13 +1231,16 @@ AA = []; // annotators for each item
 // 'submit' progresses to the next stage until all are exhausted, then submits the form
 INIT_STAGE = <?= $init_stage ?>;
 CUR_STAGE = 0;
-NUM_STAGES = <?= (($prep) ? '2' : '1') ?>;
+NUM_STAGES = <?= 1+intval($prep)+intval($nsst)+intval($vsst) ?>;
 ItemNoteAnnotator.prototype.startStage = 0;
 MWEAnnotator.prototype.startStage = 0;
 PrepTokenAnnotator.prototype.startStage = 1;
+ChunkLabelAnnotator.prototype.startStage = 1;
 ItemNoteAnnotator.prototype.stopStage = -1;
 MWEAnnotator.prototype.stopStage = -1;
 PrepTokenAnnotator.prototype.stopStage = -1;
+ChunkLabelAnnotator.prototype.stopStage = -1;
+ChunkLabelAnnotator.prototype.posFilter = <?= ($nsst) ? '"N"' : (($vsst) ? '"V"' : '""') ?>;
 
 function ann_init() {
 	for (var k=0; k<annotators.length; k++) {
@@ -997,7 +1303,12 @@ function ann_submit() {
 		}
 	}
 	CUR_STAGE++;
-	$('input[type=submit]').val((CUR_STAGE==0) ? "Continue to prepositions »" : "Next sentence »");
+	if (PrepTokenAnnotator.annotatorTypeIndex!==undefined && PrepTokenAnnotator.prototype.startStage==(CUR_STAGE+1))
+		$('input[type=submit]').val("Continue to prepositions »");
+	else if (ChunkLabelAnnotator.annotatorTypeIndex!==undefined && ChunkLabelAnnotator.prototype.startStage==(CUR_STAGE+1))
+		$('input[type=submit]').val("Continue to supersenses »");
+	else
+		$('input[type=submit]').val("Save & continue »");
 	return (CUR_STAGE>=NUM_STAGES);	// ready to submit form
 }
 
@@ -1028,10 +1339,12 @@ $(function () {
 	ann_setup();
 	
 	if ((CUR_STAGE+1)>=NUM_STAGES) {
-		//$('input[type=submit]').val("Next sentence »");
+		//$('input[type=submit]').val("Save & continue »");
 	}
 	else if (PrepTokenAnnotator.annotatorTypeIndex!==undefined && PrepTokenAnnotator.prototype.startStage==(CUR_STAGE+1))
 		$('input[type=submit]').val("Continue to prepositions »");
+	else if (ChunkLabelAnnotator.annotatorTypeIndex!==undefined && ChunkLabelAnnotator.prototype.startStage==(CUR_STAGE+1))
+		$('input[type=submit]').val("Continue to supersenses »");
 	
 //	$('form').sisyphus();	// use localstorage to cache form data so it is preserved across refresh
 	for (var I=0; I<II.length; I++) {	// now that input fields may have been populated, re-render the MWE annotations
@@ -1334,6 +1647,8 @@ function doSubmit() {
 <input type="hidden" name="initval[]" class="initval" value="<?= $s['initval'] ?>" />
 <input type="hidden" name="initnote[]" class="initnote" value="<?= $s['note'] ?>" />
 <input type="hidden" name="beforeVExpand[]" class="beforeVExpand" value="" />
+<input type="hidden" name="pos[]" class="pos" value="<?= $s['pos'] ?>" />
+<input type="hidden" name="chklbls[]" class="chklbls" value="<?= $s['chklbls'] ?>" />
 <p id="sent_<?= $sid ?>" class="sent"><? if (!($versions && count($s['versions'])==0)) {
 	echo $s['sentence'];
 } ?></p>
