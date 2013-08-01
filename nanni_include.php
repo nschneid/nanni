@@ -4,13 +4,13 @@
 /* Search file $f for key $key and return its value (separated by a tab).
  * If $key is not found, return null;
  */
-function get_key_value($f, $key) {
+function get_key_value($f, $key, $lock=true) {
 	$DELIM = "\t";
 	$k = "$key$DELIM";
 	$kLen = strlen($k);
 	
 	$inF=fopen($f, 'r');	// open for writing, but don't truncate
-	if (flock($inF, LOCK_SH)) { // do an exclusive lock
+	if ($inF!==false && !$lock || flock($inF, LOCK_SH)) { // do an exclusive lock
 		$val = null;
 		while (!feof($inF)) {
 			$line=fgets($inF);
@@ -19,7 +19,8 @@ function get_key_value($f, $key) {
 				break;
 			}
 		}
-		flock($inF, LOCK_UN); // release the lock
+		if ($lock)
+			flock($inF, LOCK_UN); // release the lock
 	} else {
 		die("Couldn't lock the file: $f");
 	}
@@ -128,7 +129,8 @@ function reconcile($T,$A,$B) {
 	assert(count($T)>0);
     $A = trim($A) . ' ';
     $B = trim($B) . ' ';
-    
+    if ($A===$B)
+    	return $A;	// identical
     if (preg_match('/[\$\|]\d+ /', $A.$B)!==0)
     	return '';	// can't handle explicitly indexed groupings
     
@@ -252,6 +254,7 @@ function get_user_dir($usr) {
 $udir = get_user_dir($u);	// user directory
 $ddir = "data";	// data directory
 $edir = "extra";	// extras directory
+$pdir = "pos";	// POS directory
 
 $lang = "EN";
 
