@@ -121,10 +121,21 @@ function set_default($arr, $key, $default) {
 Given a space-tokenized string and two strings of annotations containing those tokens,
     optionally with multiword joiners _ and/or ~, produce a string containing material  
     common to the two strings but indicating discrepancies with a # symbol.
+
+If one annotation is empty, return the non-empty one. If both are empty, return the 
+tokenized string.
     
 2013-06-06 (ported from Python)
 */
 function reconcile($T,$A,$B) {
+	if (!$A) {
+		if ($B) return $B;
+		return $T;
+	}
+	else if (!$B) {
+		return $A;
+	}
+	
 	$T = preg_split('/\s+/', $T);
 	assert(count($T)>0);
     $A = trim($A) . ' ';
