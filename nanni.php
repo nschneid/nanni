@@ -5,6 +5,8 @@
 error_reporting(0);
 ini_set('display_errors', 'On');
 
+header("Content-Security-Policy: default-src 'self' ; script-src 'unsafe-inline' ; style-src 'unsafe-inline'");
+
 /**
 Nanni: Nice Annotation Interface
 
@@ -24,7 +26,7 @@ Currently the interface is configured for annotation of:
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-<link rel="stylesheet" href="http://code.jquery.com/ui/1.9.2/themes/base/jquery-ui.css" />
+<link rel="stylesheet" href="jquery-ui_1.9.2.css" />
 <style type="text/css">
 body,tbody { font-family: "Helvetica Neue",helvetica,arial,sans-serif; }
 div.item { max-width: 40em; margin-left: auto; margin-right: auto; }
@@ -273,11 +275,11 @@ else if ($iFrom==-1) {	// demo mode
 }
 
 ?>
-<script type="text/javascript" language="javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
-<script type="text/javascript" language="javascript" src="https://jquery-json.googlecode.com/files/jquery.json-2.3.min.js"></script>
-<script type="text/javascript" language="javascript" src="http://code.jquery.com/ui/1.9.2/jquery-ui.js"></script>
-<script type="text/javascript" language="javascript" src="jquery.ui.autocomplete.html.js"></script>
-<script type="text/javascript" language="javascript" src="sisyphus.min.js"></script>
+<script type="text/javascript" language="javascript" src="js/jquery_1.8.2.min.js"></script>
+<script type="text/javascript" language="javascript" src="js/jquery.json-2.3.min.js"></script>
+<script type="text/javascript" language="javascript" src="js/jquery-ui_1.9.2.js"></script>
+<script type="text/javascript" language="javascript" src="js/jquery.ui.autocomplete.html.js"></script>
+<script type="text/javascript" language="javascript" src="js/sisyphus.min.js"></script>
 <script type="text/javascript">
 
 // Escape special HTML characters, including quotes
@@ -506,14 +508,12 @@ ItemNoteAnnotator.prototype.identifyTargets = function() {
 		this.initval = $(item).find('input.initnote').val();
 		var $control = $('<textarea/>').attr({"id": "note_"+itemId, "name": "note[]", 
 										  "placeholder": "Note for sentence "+itemId+" (optional)",
-										  "rows": "1", "cols": "80",
-										  "readonly": <?= ($readonly) ? 'true' : 'false' ?>}).addClass("comment").val(this.initval);
+										  "rows": "1", "cols": "80"}).addClass("comment").val(this.initval);
 		this.target = $control.get(0);
 		$('<p/>').append($control).insertAfter($(item).find('p.buttons'));
 		this.ann.submittable = true;
-		if ($control.prop("readonly") && $control.val()==="") $control.hide();
 	}
-	a.rerender = function () {
+	a.rerender = function () {	// if a value may have changed, decide whether to show/hide the control
 		$control = $(this.target);
 		if ($control.prop("readonly") && $control.val()==="") $control.hide();
 		else $control.show();
@@ -543,9 +543,7 @@ MWEAnnotator.prototype.identifyTargets = function() {
 		if (!this.initval)
 			this.initval = this.sentence;
 		var $control = $('<textarea/>').attr({"id": "mwe_"+itemId, "name": "mwe[]", 
-										  "rows": "3", "cols": "80",
-										  "readonly": <?= ($readonly) ? 'true' : 'false' ?>}).addClass("input").val(this.initval);
-		if ($control.prop("readonly") && $control.val()==="") $control.hide();
+										  "rows": "3", "cols": "80"}).addClass("input").val(this.initval);
 		var $out1 = $('<input type="hidden" name="sgroups[]" class="sgroups" value=""/>').attr({"id": "sgroups_"+itemId});
 		var $out2 = $('<input type="hidden" name="wgroups[]" class="wgroups" value=""/>').attr({"id": "wgroups_"+itemId});
 		this.target = $control.get(0);
@@ -910,7 +908,7 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 			$control.val(this.initval);
 		
 		this.target = $control.get(0);
-		var width = this.ann.computeVisibleWidth(this, $control, $word);
+		//var width = this.ann.computeVisibleWidth(this, $control, $word);
 		$word.append($control);
 
 		this.submittable = true;
@@ -919,8 +917,10 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 		$control.dblclick(function (evt) { evt.stopPropagation(); });
 		
 		this.aparecium = function () {
-			$control.show();
-			$word.css("width", this.ann.computeVisibleWidth(this, $control, $word));
+			if (this.rerender())	// show unless readonly and empty
+				$word.css("width", this.ann.computeVisibleWidth(this, $control, $word));
+			else
+				$word.css("width", "inherit");
 		}
 		this.evanesco = function () {
 			$control.hide();
@@ -928,7 +928,7 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 		}
 		
 		this.evanesco();
-			
+		
 		this.start = function () {
 			if (this.submittable)
 				this.aparecium();
@@ -937,6 +937,18 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 		this.stop = function () {
 			this.evanesco();
 			this.ann.constructor.stopped = true;
+		}
+	}
+	a.rerender = function () {	// if a value may have changed, decide whether to show/hide the control
+		$control = $(this.target);
+		if ($control.prop("readonly") && $control.val()==="") {
+			$control.hide();
+			return false;
+		}
+		else {
+			$control.show();
+//console.log("rerender true");
+			return true;
 		}
 	}
 	return a;
@@ -1144,14 +1156,23 @@ ChunkLabelAnnotator.prototype.identifyTargets = function() {
 	
 	// create individual actors
 	decorateActor = function (a) {
-		a.initValue = function () {	// look for previously saved value
+		a.deserialize = function (isInitial) {
+			var val = '';
 			if (this.ann.target.value) {
 				var v = $.parseJSON(this.ann.target.value)[this.tokenOffset];
 				if (v) {
 					v = v.split('|');
-					this.initval = v[v.length-1];
+					val = v[v.length-1];
 				}
 			}
+			
+			if (isInitial)
+				this.initval = val;	// will be initialized in firstrender()
+			else if (this.target.value!==val)	// condition avoids triggering form validation error on an empty field
+				$(this.target).val(val);
+		}
+		a.initValue = function () {	// look for previously saved value
+			this.deserialize(true);
 			return Actor.prototype.initValue.call(this);
 		}
 	
@@ -1195,6 +1216,8 @@ ChunkLabelAnnotator.prototype.identifyTargets = function() {
 ChunkLabelAnnotator.prototype.updateTargets = function(updateInfo) {
 	var theann = this;
 	$.each(this.actors, function (j, a) {
+		this.deserialize(false);	// look up this actor's value from overall annotator value (may have changed in the versions browser)
+		
 		// update defaults to reflect the current MWE analysis
 		if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, theann.posFilter)) {
 			$(a.target).prop("disabled","").prop("required","required");
@@ -1229,9 +1252,10 @@ AA = []; // annotators for each item
 
 // stages allow different kinds of annotation to become available to the user at different times
 // 'submit' progresses to the next stage until all are exhausted, then submits the form
-INIT_STAGE = <?= $init_stage ?>;
+<? $num_stages = 1+intval($prep)+intval($nsst)+intval($vsst); ?>
+INIT_STAGE = <?= ($embedded) ? $num_stages : $init_stage ?>;
 CUR_STAGE = 0;
-NUM_STAGES = <?= 1+intval($prep)+intval($nsst)+intval($vsst) ?>;
+NUM_STAGES = <?= $num_stages ?>;
 ItemNoteAnnotator.prototype.startStage = 0;
 MWEAnnotator.prototype.startStage = 0;
 PrepTokenAnnotator.prototype.startStage = 1;
@@ -1270,6 +1294,11 @@ function ann_setup() {
 	}
 	while (CUR_STAGE<INIT_STAGE)
 		ann_submit();
+	if (<?= ($readonly) ? 'true' : 'false' ?>) {
+		$('form input,form textarea').prop("readonly", "true").each(function (j) {
+			if (this.value=="") $(this).hide();
+		});
+	}
 }
 function ann_update(a, newval) {
 	var I = a.ann.I;
@@ -1323,8 +1352,12 @@ KEY_UP_ARROW = 38;
 KEY_RIGHT_ARROW = 39;
 KEY_DOWN_ARROW = 40;
 
-$(function () {
+var inited = false;
 
+function init() {
+	if (inited) return;	// only do this once
+	inited = true;
+	
 	$('.item > p.sent').each(function (j) {
 		ww = $(this).text().split(/\s+/g);
 		$(this).html('');
@@ -1349,6 +1382,16 @@ $(function () {
 //	$('form').sisyphus();	// use localstorage to cache form data so it is preserved across refresh
 	for (var I=0; I<II.length; I++) {	// now that input fields may have been populated, re-render the MWE annotations
 		AA[I][MWEAnnotator.annotatorTypeIndex].validate();
+	}
+	
+<? if ($embedded) { ?>
+	$('select').each(function (j) { this.size=Math.min(5,this.options.length); $(this).change(); });
+<? } ?>
+}
+
+$(function () {
+	if (<?= ($embedded) ? 'false' : 'true' ?>) {	// if embedded, init() will be called when it is displayed so that size computations will work
+		init();
 	}
 });
 
@@ -1601,7 +1644,12 @@ function loadVersion(I, versionS) {
 	$(noteactor.target).val(parts[parts.length-1]);
 	ann_update(noteactor, noteactor.getValue());
 	
-	// TOOD: prep tags
+	var meta = $.parseJSON(parts[parts.length-3].replace("\\'","'"));
+	var chklblann = AA[I][ChunkLabelAnnotator.annotatorTypeIndex];
+	$(chklblann.target).val($.toJSON(meta.chklbls));
+	chklblann.updateTargets();
+	
+	// TODO: preps
 }
 
 
@@ -1711,22 +1759,22 @@ function versioncmp($a, $b) {
 		$iver++;
 	}
 ?></select>
-<script type="text/javascript">
-$(function () {
-	$('select').each(function (j) { this.size=Math.min(5,this.options.length); $(this).change(); })
-});
-</script>
+<?
+// see special code in init() for initializing the select box
+?>
+
 
 <? } else if ($versions) { echo 'No other versions of this sentence.'; } ?>
 </p>
 
 	<? if ($vv!==null && !$versions) { 
 		  foreach (((is_array($vv)) ? $vv : array($vv)) as $thisv) {
+		  	$thisvHidden = !(strlen($thisv)>=1 && substr($thisv,0,1)==' ');
 	?>
 	<div class="versions">
-		<p style="text-align: center; font-size: small;"><a href="#" onclick="$('a').eq(1).parent().parent().siblings('.beforeVExpand').val($('a').eq(1).parent().parent().siblings().find('.input').val()); $(this).parent().next('iframe').toggle();"><?= count($s['versions']) ?> versions in history</a></p>
+		<p style="text-align: center; font-size: small;"><a href="#" onclick="$('a').eq(1).parent().parent().siblings('.beforeVExpand').val($('a').eq(1).parent().parent().siblings().find('.input').val()); $(this).parent().next('iframe').toggle(); <? if ($thisvHidden) { ?>$(this).parent().next('iframe').get(0).contentWindow.init();<? } ?>"><?= count($s['versions']) ?> versions in history</a></p>
 		<iframe src="<?= htmlspecialchars($_SERVER["REQUEST_URI"]) ?>&amp;versions=<?= urlencode(preg_replace('/^ /', '', $thisv)) ?>&amp;nonav&amp;nosubmit&amp;noinstr&amp;readonly&amp;embedded" 
-				style="<?= (strlen($thisv)>=1 && substr($thisv,0,1)==' ') ? '' : 'display: none; ' ?>width: 106%; height: 15em; position: relative; left: -2%; border: none; background-color: #eee;"></iframe>
+				style="<?= ($thisvHidden) ? 'display: none; ' : '' ?>width: 106%; height: 15em; position: relative; left: -2%; border: none; background-color: #eee;"></iframe>
 	</div>
 	<? 
 	      }
