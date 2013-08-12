@@ -1774,6 +1774,7 @@ function versioncmp($a, $b) {
 	<div class="versions">
 		<p style="text-align: center; font-size: small;"><a href="#" onclick="$('a').eq(1).parent().parent().siblings('.beforeVExpand').val($('a').eq(1).parent().parent().siblings().find('.input').val()); $(this).parent().next('iframe').toggle(); <? if ($thisvHidden) { ?>$(this).parent().next('iframe').get(0).contentWindow.init();<? } ?>"><?= count($s['versions']) ?> versions in history</a></p>
 		<iframe src="<?= htmlspecialchars($_SERVER["REQUEST_URI"]) ?>&amp;versions=<?= urlencode(preg_replace('/^ /', '', $thisv)) ?>&amp;nonav&amp;nosubmit&amp;noinstr&amp;readonly&amp;embedded" 
+				<? if (!$thisvHidden) { ?>onload="this.contentWindow.init()"<? } ?>
 				style="<?= ($thisvHidden) ? 'display: none; ' : '' ?>width: 106%; height: 15em; position: relative; left: -2%; border: none; background-color: #eee;"></iframe>
 	</div>
 	<? 
