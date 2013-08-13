@@ -127,7 +127,7 @@ tokenized string.
     
 2013-06-06 (ported from Python)
 */
-function reconcile($T,$A,$B) {
+function reconcile_mwes($T,$A,$B) {
 	if (!$A) {
 		if ($B) return $B;
 		return $T;
@@ -235,7 +235,51 @@ function reconcile($T,$A,$B) {
     return trim($s);
 }
 
-
+/* Basically, an array diff, marking discrepancies with '#'
+ * If either tagging is empty, the other one will simply be used.
+ */
+ 
+function reconcile_tags($T,$A,$B) {
+	if (!$A) {
+		if ($B) return $B;
+		return $T;
+	}
+	else if (!$B) {
+		return $A;
+	}
+	
+	$T = preg_split('/\s+/', $T);
+	
+	// check token string and remove it from the tag arrays
+	foreach ($A as $k => $v) {
+		if (strpos($v, $T[$k].'|')===false) {
+			die("Mismatch in reconcile_tags(): $v vs. {$T[$k]}");
+		}
+		$A[$k] = substr($v, strlen($T[$k])+1);
+	}
+	foreach ($B as $k => $v) {
+		if (strpos($v, $T[$k].'|')===false) {
+			die("Mismatch in reconcile_tags(): $v vs. {$T[$k]}");
+		}
+		$B[$k] = substr($v, strlen($T[$k])+1);
+	}
+	
+	$result = array();
+	foreach ($A as $k => $v) {
+		if ($B[$k]!==$v) {
+			$result[$k] = '#' . $v . '#' . $B[$k];
+		}
+		else
+			$result[$k] = $v;	// match
+	}
+	foreach ($B as $k => $v) {
+		if ($A[$k]!==$v) {
+			$result[$k] = '#' . $A[$k] . '#' . $v;
+		}
+		// matching items were already added in the above loop
+	}
+	return $result;
+}
 
     //include_once("json.php");
 

@@ -245,9 +245,20 @@ if ($iFrom>-1) {
 					$A = htmlspecialchars($Aparts[count($Aparts)-2], ENT_QUOTES);
 					$B = htmlspecialchars($Bparts[count($Bparts)-2], ENT_QUOTES);
 					
+					$AJ = json_decode(str_replace("\\'", "'", $Aparts[count($Aparts)-3]), true);
+					$BJ = json_decode(str_replace("\\'", "'", $Bparts[count($Bparts)-3]), true);
+					
+					if ($AJ['chklbls'] || $BJ['chklbls']) {
+						if (!($nsst || $vsst)) {
+							die("At least one of the annotations to be reconciled contains tags, so an appropriate URL parameter should be specified.");
+						}
+						$reconciledLbls = reconcile_tags($tokenizedS, $AJ['chklbls'], $BJ['chklbls']);
+						$sentdata['chklbls'] = htmlspecialchars(json_encode($reconciledLbls), ENT_QUOTES);
+					}
+					
 					$sentdata['reconcile'] = array($A, $B);
-					$sentdata['recon'] = reconcile($tokenizedS, $A, $B);
-					$sentdata['initval'] = reconcile($tokenizedS, $A, $B);
+					$sentdata['recon'] = reconcile_mwes($tokenizedS, $A, $B);
+					$sentdata['initval'] = reconcile_mwes($tokenizedS, $A, $B);
 					if ($sentdata['initval']==='') 
 						$sentdata['initval'] = '#cannot-auto-reconcile#';
 				}
