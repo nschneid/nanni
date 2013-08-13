@@ -1236,12 +1236,16 @@ ChunkLabelAnnotator.prototype.updateTargets = function(updateInfo) {
 			if (theann.constructor.started) a.aparecium();
 			//$(a.target).attr("placeholder", "X").removeAttr("required");
 		}
-		else {
+		else if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, '')) {
+			// would begin a chunk but fails POS filter
+			a.submittable = (a.target.value!=="");	// so previous values will be saved when annotating other POSes
 			$(a.target).prop("disabled","disabled").prop("required","");
-			if (!a.target.value)	// save existing values even if disabled! e.g. previous noun labels during verb labeling
-				a.submittable = false;
+		}
+		else {
+			// irrelevant given MWE analysis
+			a.submittable = false;
+			$(a.target).prop("disabled","disabled").prop("required","");
 			if (theann.constructor.started) a.evanesco();
-			//$(a.target).removeAttr("placeholder").attr("required","required");
 		}
 	});
 }
