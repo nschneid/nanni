@@ -252,7 +252,7 @@ if ($iFrom>-1) {
 						if (!($nsst || $vsst)) {
 							die("At least one of the annotations to be reconciled contains tags, so an appropriate URL parameter should be specified.");
 						}
-						$reconciledLbls = reconcile_tags($tokenizedS, $AJ['chklbls'], $BJ['chklbls']);
+						$reconciledLbls = reconcile_tags(htmlspecialchars_decode($tokenizedS, ENT_QUOTES), $AJ['chklbls'], $BJ['chklbls']);
 						$sentdata['chklbls'] = htmlspecialchars(json_encode($reconciledLbls), ENT_QUOTES);
 					}
 					
@@ -508,6 +508,11 @@ function ItemNoteAnnotator(I, itemId) {
 	this.actors = [];
 }
 ItemNoteAnnotator.prototype.identifyTargets = function() {
+	if ($(this.item).find('p.sent').find('span.w').length==0) {
+		// no sentence. e.g., in versions browser
+		return;
+	}
+	
 	var a = new Actor(this);
 	this.actors.push(a);
 	a.getValue = function () {
@@ -539,6 +544,11 @@ function MWEAnnotator(I, itemId) {
 	this.actors = [];
 }
 MWEAnnotator.prototype.identifyTargets = function() {
+	if ($(this.item).find('p.sent').find('span.w').length==0) {
+		// no sentence. e.g., in versions browser
+		return;
+	}
+	
 	var a = new Actor(this);
 	this.actors.push(a);
 	
@@ -1376,16 +1386,18 @@ function init() {
 	$('.item > p.sent').each(function (j) {
 		ww = $(this).text().split(/\s+/g);
 		$(this).html('');
-		for (var i=0; i<ww.length; i++) {
-			$('<span>').attr({"id": "i"+j+"w"+i, "class": "w", "data-w": i}).text(ww[i]).appendTo($(this));
-			if (i<ww.length-1) $(this).append(' ');
+		if (ww.length>1 || ww[0]!=="") {
+			for (var i=0; i<ww.length; i++) {
+				$('<span>').attr({"id": "i"+j+"w"+i, "class": "w", "data-w": i}).text(ww[i]).appendTo($(this));
+				if (i<ww.length-1) $(this).append(' ');
+			}
 		}
 	});
-	
-	
+		
 	ann_init();
 	ann_setup();
-	
+
+
 	if ((CUR_STAGE+1)>=NUM_STAGES) {
 		//$('input[type=submit]').val("Save & continue »");
 	}
