@@ -142,7 +142,7 @@ if ($iFrom>-1) {
 			$mwe = trim(preg_replace('/\s+/', ' ', $_REQUEST['mwe'][$I]));
 			$note = trim(preg_replace('/\s+/', ' ', $_REQUEST['note'][$I]));
 			$key = $_REQUEST['sentid'][$I];
-			$avals = '"initval": "' . addslashes($_REQUEST['initval'][$I]) . '",';
+			$avals = '"initval": "' . addslashes(trim(preg_replace('/\s+/', ' ', $_REQUEST['initval'][$I]))) . '",';
 			if (array_key_exists('beforeVExpand', $_REQUEST))	// annotation prior to clicking the "versions" link
 				$avals .= '  "beforeVExpand": "' .  preg_replace('/\s+/', ' ', trim(addslashes($_REQUEST['beforeVExpand'][$I]))) . '",';
 			$chklbls = ($_REQUEST['chklbls']) ? $_REQUEST['chklbls'][$I] : '{}';
