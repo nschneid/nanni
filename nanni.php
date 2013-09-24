@@ -597,13 +597,14 @@ MWEAnnotator.prototype.isGrouped = function(tknOffset, strength) {
 }
 
 /* poses (optional): list of POSes for the sentence; 
-posFilter (optional): string that must be a prefix of the POS tag of some element in the chunk */
+posFilter (optional): regex that must match the POS tag of some element in the chunk 
+for the chunk to be included */
 MWEAnnotator.prototype.isChunkBeginner = function(tknOffset, strength, poses, posFilter) {
 	if (arguments.length<2) strength = 'both';
 	if (arguments.length<3) poses = null;
 	if (arguments.length<4) posFilter = '';
 	if (!this.isGrouped(tknOffset, strength)) {
-		return (poses===null || poses[tknOffset].indexOf(posFilter)==0);
+		return (poses===null || poses[tknOffset].match(posFilter));
 	}
 	// strength is one of ('strong', 'weak', 'both')
 	var strong = (strength=='strong' || strength=='both');
@@ -615,14 +616,14 @@ MWEAnnotator.prototype.isChunkBeginner = function(tknOffset, strength, poses, po
 		sb = $(this.item).find('.sent .w.slu'+thistok.data("slu")).eq(0).data("w");
 		if (sb!=tknOffset) return false;
 		sb = ($(this.item).find('.sent .w.slu'+thistok.data("slu")).filter(function (j) {
-				return (poses===null || poses[$(this).data("w")].indexOf(posFilter)==0);
+				return (poses===null || poses[$(this).data("w")].match(posFilter));
 			}).length>0);
 	}
 	if (weak && classes.indexOf(' wlu')>-1) {
 		wb = $(this.item).find('.sent .w.wlu'+thistok.data("wlu")).eq(0).data("w");
 		if (wb!=tknOffset) return false;
 		wb = ($(this.item).find('.sent .w.wlu'+thistok.data("wlu")).filter(function (j) {
-				return (poses===null || poses[$(this).data("w")].indexOf(posFilter)==0);
+				return (poses===null || poses[$(this).data("w")].match(posFilter));
 			}).length>0);
 	}
 	return (sb || wb);
@@ -1289,7 +1290,7 @@ ItemNoteAnnotator.prototype.stopStage = -1;
 MWEAnnotator.prototype.stopStage = -1;
 PrepTokenAnnotator.prototype.stopStage = -1;
 ChunkLabelAnnotator.prototype.stopStage = -1;
-ChunkLabelAnnotator.prototype.posFilter = <?= ($nsst) ? '"N"' : (($vsst) ? '"V"' : '""') ?>;
+ChunkLabelAnnotator.prototype.posFilter = <?= ($nsst) ? '/^(N|ADD)/' : (($vsst) ? '/^V/' : '""') ?>;
 
 function ann_init() {
 	for (var k=0; k<annotators.length; k++) {
