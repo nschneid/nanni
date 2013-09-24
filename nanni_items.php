@@ -57,6 +57,8 @@ div.item { max-width: 40em; margin-left: auto; margin-right: auto; }
 #items { border-collapse: collapse; }
 #items th,#items td { padding: 2px; }
 #items th.num { text-align: right; padding-right: 0.5em; color: #aaa; font-weight: normal; }
+#items td.rawitem:not(.hasChkLbls):not(.sUnann) { font-style: italic; }
+#items td.users span.user:not(.hasChkLbls):not(.sUnann) { font-style: italic; }
 #items td.note:empty { border: none; }
 #items td.note:not(:empty) { border: solid 1px #000; }
 #items tr:hover { background-color: #eee; }
@@ -346,7 +348,8 @@ if ($iFrom>-1) {
 					$parts = explode("\t", $v);
 					$timestamp = intval($parts[1]);
 					$time = date('r', $timestamp);
-					$infoJ = json_decode(str_replace("\\'", "'", $parts[count($parts)-3]));
+					$infoJ = json_decode(str_replace("\\'", "'", $parts[count($parts)-3]), true);
+					$hasChkLbls = ($infoJ['chklbls']!==null) ? true : false;					
 					$anno = htmlspecialchars($parts[count($parts)-2]);
 					$note = htmlspecialchars($parts[count($parts)-1]);
 					$tip = $anno . "\n" . $time;
@@ -355,6 +358,7 @@ if ($iFrom>-1) {
 				else {
 					$time = '';
 					$infoJ = null;
+					$hasChkLbls = false;
 					$anno = '';
 					$note = '';
 					$tip = '';
@@ -368,7 +372,7 @@ if ($iFrom>-1) {
 				}
 				else $e = '';
 				
-?><tr id="_<?= $sentId ?>"><th class="num" title="<?= $sentId ?>" id="n<?= $l ?>"><?= $l ?></th><td class="rawitem <?= $status ?>" title="<?= $tip ?>"><a href="<?= $annurl ?>"><?= $sent ?></a></td><td class="note"><?= $note ?></td><td class="extra"><?= $e ?></td><td class="users"><?
+?><tr id="_<?= $sentId ?>"><th class="num" title="<?= $sentId ?>" id="n<?= $l ?>"><?= $l ?></th><td class="rawitem <?= $status ?><?= ($hasChkLbls) ? ' hasChkLbls' : '' ?>" title="<?= $tip ?>"><a href="<?= $annurl ?>"><?= $sent ?></a></td><td class="note"><?= $note ?></td><td class="extra"><?= $e ?></td><td class="users"><?
 					foreach (get_key_values("users/*/$split.nanni", $sentId) as $j => $data) {
 						$parts = explode("\t", $data);
 						$timestamp = intval($parts[1]);
@@ -376,15 +380,17 @@ if ($iFrom>-1) {
 						if ($userId=="@$u") continue;
 						$userOffset = set_default(&$otherusers, $userId, count($otherusers));
 						$time = date('r', $timestamp);
-						$infoJ2 = json_decode(str_replace("\\'", "'", $parts[count($parts)-3]));
-						if ($infoJ===null || (count($infoJ->sgroups)==0 && count($infoJ2->sgroups)==0 && count($infoJ->wgroups)==0 && count($infoJ2->wgroups)==0)) {
+						$infoJ2 = json_decode(str_replace("\\'", "'", $parts[count($parts)-3]), true);
+						$hasChkLbls2 = ($infoJ2['chklbls']!==null) ? true : false;
+
+						if ($infoJ===null || (count($infoJ['sgroups'])==0 && count($infoJ2['sgroups'])==0 && count($infoJ['wgroups'])==0 && count($infoJ2['wgroups'])==0)) {
 							$ndiff = '';
 						}
 						else {
-							$sgroups1 = $infoJ->sgroups;
-							$sgroups2 = $infoJ2->sgroups;
-							$wgroups1 = $infoJ->wgroups;
-							$wgroups2 = $infoJ2->wgroups;
+							$sgroups1 = $infoJ['sgroups'];
+							$sgroups2 = $infoJ2['sgroups'];
+							$wgroups1 = $infoJ['wgroups'];
+							$wgroups2 = $infoJ2['wgroups'];
 							
 							// strong links: pairwise consecutive (not necessarily contiguous) group members
 							$slinks1 = array();
@@ -451,14 +457,14 @@ if ($iFrom>-1) {
 							
 							
 							
-							$sgroups1J = array_map('json_encode',$infoJ->sgroups);
-							$sgroups2J = array_map('json_encode',$infoJ2->sgroups);
-							$wgroups1J = array_map('json_encode',$infoJ->wgroups);
-							$wgroups2J = array_map('json_encode',$infoJ2->wgroups);
+							$sgroups1J = array_map('json_encode',$infoJ['sgroups']);
+							$sgroups2J = array_map('json_encode',$infoJ2['sgroups']);
+							$wgroups1J = array_map('json_encode',$infoJ['wgroups']);
+							$wgroups2J = array_map('json_encode',$infoJ2['wgroups']);
 							$diff1 = array_diff($sgroups1J,$sgroups2J);
 							$diff2 = array_diff($sgroups2J,$sgroups1J);
 							$ndiff = count($diff1)+count($diff2);
-							//$iaa[null] += count($infoJ->sgroups);
+							//$iaa[null] += count($infoJ['sgroups']);
 							
 							if (!array_key_exists($userId, $iaa[null]))
 								$iaa[null][$userId] = array('s' => 0, 'sw' => 0);
@@ -467,8 +473,8 @@ if ($iFrom>-1) {
 							if (!array_key_exists($userId, $iaa))
 								$iaa[$userId] = array('stotal' => 0, 'scommon' => 0, 'swtotal' => 0, 'swcommon' => 0, 
 									'sP' => 0, 'sR' => 0, 'sF' => 0, 'swP' => 0, 'swR' => 0, 'swF' => 0);
-							//$iaa[$userId]['total'] += count($infoJ2->sgroups);
-							//$iaa[$userId]['common'] += count($infoJ2->sgroups) - count($diff2);
+							//$iaa[$userId]['total'] += count($infoJ2['sgroups']);
+							//$iaa[$userId]['common'] += count($infoJ2['sgroups']) - count($diff2);
 							$iaa[$userId]['stotal'] += count($slinks2);
 							$iaa[$userId]['swtotal'] += count($swlinks2);
 							
@@ -493,7 +499,7 @@ if ($iFrom>-1) {
 						if ($note)
 							$tip .= "\n" . $note;
 						$status = ($timestamp<(mktime()-24*60*60)) ? 'sAnn' : 'sRecent';
-?><span class="user usr<?= $userOffset ?> <?= $status ?><?= ($note) ? ' hasnote' : '' ?>" title="<?= $tip ?>"><?= $userId ?></span><sub><?= $ndiff ?></sub> <?
+?><span class="user usr<?= $userOffset ?> <?= $status ?><?= ($hasChkLbls2) ? ' hasChkLbls' : '' ?><?= ($note) ? ' hasnote' : '' ?>" title="<?= $tip ?>"><?= $userId ?></span><sub><?= $ndiff ?></sub> <?
 					}
 ?></td></tr>
 <?
