@@ -86,20 +86,23 @@ $prep = array_key_exists('prep', $_REQUEST);	// prepositions
 $nsst = array_key_exists('nsst', $_REQUEST);	// noun supersenses
 $vsst = array_key_exists('vsst', $_REQUEST);	// verb supersenses
 
-$new = $_REQUEST['new'];
-if (!$new)
-	$new = array_key_exists('new', $_REQUEST);
+
 $nonav = array_key_exists('nonav', $_REQUEST);
 $nosubmit = array_key_exists('nosubmit', $_REQUEST);
 $vv = isset($_REQUEST['v']) ? $_REQUEST['v'] : null;	// invoke version browser(s) in an iframe
-$reconcile = isset($_REQUEST['reconcile']) ? $_REQUEST['reconcile'] : null;	// 2 users whose annotations should be reconciled
+$embedded = array_key_exists('embedded', $_REQUEST);
+$new = $_REQUEST['new'];
+if (!$new)
+	$new = array_key_exists('new', $_REQUEST);
+if ($embedded) $new = false;
+$reconcile = (isset($_REQUEST['reconcile']) && !$embedded) ? $_REQUEST['reconcile'] : null;	// 2 users whose annotations should be reconciled
 $versions = array_key_exists('versions', $_REQUEST);	// the version browser itself
 $instructionsCode = (array_key_exists('inst', $_REQUEST)) ? $_REQUEST['inst'] : '';
 $instructions = "mwe_ann_instructions$instructionsCode.md";
 $noinstr = array_key_exists('noinstr', $_REQUEST);
 $nooutdated = array_key_exists('nooutdated', $_REQUEST);
 $readonly = array_key_exists('readonly', $_REQUEST);
-$embedded = array_key_exists('embedded', $_REQUEST);
+
 
 if (!array_key_exists('from', $_REQUEST)) {	// demo mode
 	$iFrom = -1;
@@ -240,7 +243,6 @@ if ($iFrom>-1) {
 				}
 				
 				if ($reconcile!==null && !isset($sentdata['initval'])) {
-					// TODO: this ignores label annotations!
 					
 					$A = htmlspecialchars($Aparts[count($Aparts)-2], ENT_QUOTES);
 					$B = htmlspecialchars($Bparts[count($Bparts)-2], ENT_QUOTES);
@@ -1672,7 +1674,7 @@ function loadVersion(I, versionS) {
 	$(noteactor.target).val(parts[parts.length-1]);
 	ann_update(noteactor, noteactor.getValue());
 	
-	var meta = $.parseJSON(parts[parts.length-3].replace("\\'","'"));
+	var meta = $.parseJSON(parts[parts.length-3].replace(/\\'/g,"'"));
 	var chklblann = AA[I][ChunkLabelAnnotator.annotatorTypeIndex];
 	$(chklblann.target).val($.toJSON(meta.chklbls));
 	chklblann.updateTargets();
