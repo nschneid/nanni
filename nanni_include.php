@@ -95,6 +95,7 @@ function update_key_value($f, $key, $newval) {
 			fwrite($outF, "$k$newval");	// append
 		
 		fclose($tempF);
+		unlink($t);
 		fflush($outF);
 		
 		flock($outF, LOCK_UN); // release the lock
@@ -289,8 +290,8 @@ $authenticated_user = preg_replace('/\s+/', '-', preg_replace('/@.*/', '',  $use
 
 $issuperuser = ($authenticated_user=='nschneid');
 
-if ($authenticated_user=='guest128') { $u = 'mmordo'; }
-else if ($authenticated_user=='guest300') { $u = 'nkazour'; }
+if ($authenticated_user=='guest128' || $authenticated_user=='mordo') { $u = 'mmordo'; }
+else if ($authenticated_user=='guest300' || $authenticated_user=='guest340') { $u = 'nkazour'; }
 else { $u = $authenticated_user; }
 $authenticated_alias = $u;
 
