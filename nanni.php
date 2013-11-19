@@ -812,6 +812,7 @@ MWEAnnotator.prototype.validate = function() {
 function TokenLabelAnnotator(I, itemId) {
 	this._name = 'TokenLabelAnnotator';
 	this.labelShortcuts = {
+<? if ($nsst) { ?>
 		'LOCATION': 'L', 
 		'PERSON': 'P', 
 		'TIME': 'T', 
@@ -838,15 +839,36 @@ function TokenLabelAnnotator(I, itemId) {
 		'EVENT': 'E', 
 		'STATE': 'S', 
 		'OTHER': '_',
+<? } if ($vsst) { ?>
+		'body': 'b',
+		'change': 'x',
+		'cognition': 'g',
+		'communication': 'c',
+		'competition': 'v',
+		'consumption': 'd',
+		'contact': 'n',
+		'creation': 'r',
+		'emotion': 'e',
+		'motion': 'm',
+		'perception': 'p',
+		'possession': 'h',
+		'social': 'l',
+		'stative': 's',
+		'weather': 'w',
+		'`a': '`a',
+		'`j': '`j',
+<? } ?>
 		//'-': 'not a noun',
 		//'<': 'continues an entity',
 		//'?': 'unsure'
-		'?': '?', 
-		'`': '`'};
+		'`': '`',
+		'?': '?'};
 	this.labels = Object.keys(this.labelShortcuts); //['LOCATION', 'PERSON', 'TIME', 'GROUP', 'OTHER', '?', '`'];
 	this.labeldescriptions = {'OTHER': 'miscellaneous tag',
 		'?': '(unsure; you can also tentatively specify one or more possibilities by following them with ?)', 
-		'`': '(skip for now)'};
+		'`': '(skip for now)',
+		'`a': 'auxiliary',
+		'`j': 'adjectival'};
 	if (arguments.length == 0) return; // stop -- necessary for inheritance
 	
 	Annotator(this, I, itemId);
@@ -1280,7 +1302,7 @@ AA = []; // annotators for each item
 
 // stages allow different kinds of annotation to become available to the user at different times
 // 'submit' progresses to the next stage until all are exhausted, then submits the form
-<? $num_stages = 1+intval($prep)+intval($nsst)+intval($vsst); ?>
+<? $num_stages = 1+intval($prep)+intval($nsst || $vsst); ?>
 INIT_STAGE = <?= ($embedded) ? $num_stages : $init_stage ?>;
 CUR_STAGE = 0;
 NUM_STAGES = <?= $num_stages ?>;
@@ -1292,7 +1314,7 @@ ItemNoteAnnotator.prototype.stopStage = -1;
 MWEAnnotator.prototype.stopStage = -1;
 PrepTokenAnnotator.prototype.stopStage = -1;
 ChunkLabelAnnotator.prototype.stopStage = -1;
-ChunkLabelAnnotator.prototype.posFilter = <?= ($nsst) ? '/^(N|ADD)/' : (($vsst) ? '/^V/' : '""') ?>;
+ChunkLabelAnnotator.prototype.posFilter = <?= ($nsst) ? (($vsst) ? '/^(N|ADD|V)/' : '/^(N|ADD)/') : (($vsst) ? '/^V/' : '""') ?>;
 
 function ann_init() {
 	for (var k=0; k<annotators.length; k++) {
