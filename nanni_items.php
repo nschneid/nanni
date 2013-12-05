@@ -47,6 +47,7 @@ lexical index
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 <link rel="stylesheet" href="http://code.jquery.com/ui/1.9.2/themes/base/jquery-ui.css" />
+<link rel="icon" type="image/png" href="img/edit_find_replace-icon.png" />
 <style type="text/css">
 body,tbody { font-family: "Helvetica Neue",helvetica,arial,sans-serif; }
 div.item { max-width: 40em; margin-left: auto; margin-right: auto; }
