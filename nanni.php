@@ -810,10 +810,7 @@ MWEAnnotator.prototype.validate = function() {
 
 /** Creates a text box for inline annotation of tokens in the sentence. 
     A predefined list of labels may be used for suggesting and/or constraining the annotations. */
-function TokenLabelAnnotator(I, itemId) {
-	this._name = 'TokenLabelAnnotator';
-	this.labelShortcuts = {
-<? if ($nsst) { ?>
+N_LABEL_SHORTCUTS = {
 		'LOCATION': 'L', 
 		'PERSON': 'P', 
 		'TIME': 'T', 
@@ -839,8 +836,9 @@ function TokenLabelAnnotator(I, itemId) {
 		'ACT': '!', 
 		'EVENT': 'E', 
 		'STATE': 'S', 
-		'OTHER': '_',
-<? } if ($vsst) { ?>
+		'OTHER': '_'
+};
+V_LABEL_SHORTCUTS = {
 		'body': 'b',
 		'change': 'x',
 		'cognition': 'g',
@@ -857,13 +855,17 @@ function TokenLabelAnnotator(I, itemId) {
 		'stative': 's',
 		'weather': 'w',
 		'`a': '`a',
-		'`j': '`j',
-<? } ?>
-		//'-': 'not a noun',
-		//'<': 'continues an entity',
-		//'?': 'unsure'
-		'`': '`',
-		'?': '?'};
+		'`j': '`j'
+};
+GENERAL_LABEL_SHORTCUTS = {'`': '`', '?': '?'};
+ALL_LABEL_SHORTCUTS = $.extend({}, N_LABEL_SHORTCUTS, V_LABEL_SHORTCUTS, GENERAL_LABEL_SHORTCUTS);
+
+function TokenLabelAnnotator(I, itemId) {
+	this._name = 'TokenLabelAnnotator';
+	this.labelShortcuts = $.extend({}, 
+		<? if ($nsst) { ?>N_LABEL_SHORTCUTS, <? } ?>
+		<? if ($vsst) { ?>V_LABEL_SHORTCUTS, <? } ?>
+		GENERAL_LABEL_SHORTCUTS);
 	this.labels = Object.keys(this.labelShortcuts); //['LOCATION', 'PERSON', 'TIME', 'GROUP', 'OTHER', '?', '`'];
 	this.labeldescriptions = {'OTHER': 'miscellaneous tag',
 		'?': '(unsure; you can also tentatively specify one or more possibilities by following them with ?)', 
@@ -1269,6 +1271,13 @@ ChunkLabelAnnotator.prototype.updateTargets = function(updateInfo) {
 		if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, theann.posFilter)) {
 			$(a.target).prop("disabled","").prop("required","required");
 			a.submittable = true;
+			if (theann.posFilter==ChunkLabelAnnotator.prototype.V_FILTER && AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, ChunkLabelAnnotator.prototype.N_FILTER)) {
+				// this chunk has BOTH a noun and a verb, so allow either kind of label
+				a.labelShortcuts = ALL_LABEL_SHORTCUTS;
+				a.labels = Object.keys(ALL_LABEL_SHORTCUTS);
+				// TODO: repopulate the dropdown with all labels
+				a.validate();	// if the noun label was saved, remove the invalid flag
+			}
 			if (theann.constructor.started) a.aparecium();
 			//$(a.target).attr("placeholder", "X").removeAttr("required");
 		}
@@ -1315,7 +1324,14 @@ ItemNoteAnnotator.prototype.stopStage = -1;
 MWEAnnotator.prototype.stopStage = -1;
 PrepTokenAnnotator.prototype.stopStage = -1;
 ChunkLabelAnnotator.prototype.stopStage = -1;
-ChunkLabelAnnotator.prototype.posFilter = <?= ($nsst) ? (($vsst) ? '/^(N|ADD|V)/' : '/^(N|ADD)/') : (($vsst) ? '/^V/' : '""') ?>;
+ChunkLabelAnnotator.prototype.N_FILTER = /^(N|ADD)/;
+ChunkLabelAnnotator.prototype.V_FILTER = /^V/;
+ChunkLabelAnnotator.prototype.NV_FILTER = /^(N|ADD|V)/;
+<? if ($nsst || $vsst) { ?>
+ChunkLabelAnnotator.prototype.posFilter = ChunkLabelAnnotator.prototype.<?= ($nsst) ? 'N' : '' ?><?= ($vsst) ? 'V' : '' ?>_FILTER;
+<? } else { ?>
+ChunkLabelAnnotator.prototype.posFilter = "";
+<? } ?>
 
 function ann_init() {
 	for (var k=0; k<annotators.length; k++) {
