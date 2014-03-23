@@ -67,6 +67,7 @@ body.embedded textarea { background-color: transparent; }
 .tokenlabel { width: 6em; border: solid 1px #ccc; position: absolute; top: 2.1em; left: 0; }
 .ui-menu-item { font-size: 10pt; }
 .ui-menu .ui-menu-item a { padding-top: 0; padding-bottom: 0; }
+.toplabel { color: #09f; }
 
 .indexlinks { position: fixed; bottom: 10px; right: 10px; }
 .indexlinks a { color: #aaa; font-variant: small-caps; }
@@ -83,7 +84,8 @@ include_once('nanni_include.php');
 $init_stage = (array_key_exists('initialStage', $_REQUEST)) ? $_REQUEST['initialStage'] : '0';
 
 // extra forms of annotation
-$prep = array_key_exists('prep', $_REQUEST);	// prepositions
+$prep = array_key_exists('prep', $_REQUEST);	// preposition tokens
+$psst = array_key_exists('psst', $_REQUEST);	// preposition supersenses
 $nsst = array_key_exists('nsst', $_REQUEST);	// noun supersenses
 $vsst = array_key_exists('vsst', $_REQUEST);	// verb supersenses
 
@@ -150,7 +152,7 @@ if ($iFrom>-1) {
 			if (array_key_exists('beforeVExpand', $_REQUEST))	// annotation prior to clicking the "versions" link
 				$avals .= '  "beforeVExpand": "' .  preg_replace('/\s+/', ' ', trim(addslashes($_REQUEST['beforeVExpand'][$I]))) . '",';
 			$chklbls = ($_REQUEST['chklbls']) ? $_REQUEST['chklbls'][$I] : '{}';
-			$val = $_REQUEST['loadtime'] . "\t" . mktime() . "\t@$u\t$ann\t{{$avals}   \"sgroups\": " . $_REQUEST['sgroups'][$I] . ",   \"wgroups\": " . $_REQUEST['wgroups'][$I] . (($prep) ? ",   \"preps\": " . $_REQUEST['preps'][$I] : '') . (($nsst || $vsst) ? ",   \"chklbls\": $chklbls" : '') . ",   \"url\": \"" . $_SERVER["SERVER_NAME"].$_SERVER["REQUEST_URI"] . "\",   \"session\": \"" . session_id() . "\",  \"authuser\": \"$user\"}\t$mwe\t$note\n";
+			$val = $_REQUEST['loadtime'] . "\t" . mktime() . "\t@$u\t$ann\t{{$avals}   \"sgroups\": " . $_REQUEST['sgroups'][$I] . ",   \"wgroups\": " . $_REQUEST['wgroups'][$I] . (($prep) ? ",   \"preps\": " . $_REQUEST['preps'][$I] : '') . (($nsst || $vsst || $psst) ? ",   \"chklbls\": $chklbls" : '') . ",   \"url\": \"" . $_SERVER["SERVER_NAME"].$_SERVER["REQUEST_URI"] . "\",   \"session\": \"" . session_id() . "\",  \"authuser\": \"$user\"}\t$mwe\t$note\n";
 			fwrite($tagF, "$key\t$val");
 			update_key_value($kv, $key, $val);
 		}
@@ -238,7 +240,7 @@ if ($iFrom>-1) {
 					}
 				}
 				
-				if ($nsst || $vsst) {	// load POS tags
+				if ($nsst || $vsst || $psst) {	// load POS tags
 					$posJS = get_key_value("$pdir/$split.pos.json", $sentId, false);
 					$sentdata['pos'] = htmlspecialchars($posJS, ENT_QUOTES);
 				}
@@ -252,7 +254,7 @@ if ($iFrom>-1) {
 					$BJ = json_decode(str_replace("\\'", "'", $Bparts[count($Bparts)-3]), true);
 					
 					if ($AJ['chklbls'] || $BJ['chklbls']) {
-						if (!($nsst || $vsst)) {
+						if (!($nsst || $vsst || $psst)) {
 							die("At least one of the annotations to be reconciled contains tags, so an appropriate URL parameter should be specified.");
 						}
 						$reconciledLbls = reconcile_tags(htmlspecialchars_decode($tokenizedS, ENT_QUOTES), $AJ['chklbls'], $BJ['chklbls']);
@@ -600,35 +602,46 @@ MWEAnnotator.prototype.isGrouped = function(tknOffset, strength) {
 }
 
 /* poses (optional): list of POSes for the sentence; 
-posFilter (optional): regex that must match the POS tag of some element in the chunk 
-for the chunk to be included */
-MWEAnnotator.prototype.isChunkBeginner = function(tknOffset, strength, poses, posFilter) {
+filterFxn (optional): function that must be true for some (word, POS) pair in the chunk 
+for the chunk to be included 
+firstOnly (optional): if true, return false unless filterFxn matches the first token in the chunk
+*/
+MWEAnnotator.prototype.isChunkBeginner = function(tknOffset, strength, poses, filterFxn, firstOnly) {
 	if (arguments.length<2) strength = 'both';
 	if (arguments.length<3) poses = null;
-	if (arguments.length<4) posFilter = '';
+	if (arguments.length<4) filterFxn = function (word, pos) { return true; };
+	if (arguments.length<5) firstOnly = false;
+	var $thisitem = $(this.item);
+	var getTok = function (toffset) {
+		return $thisitem.find('.sent .w[data-w='+toffset+']');
+	};
+	var thistok = getTok(tknOffset);
+	var w = thistok.text();
 	if (!this.isGrouped(tknOffset, strength)) {
-		return (poses===null || poses[tknOffset].match(posFilter));
+		return (poses===null || filterFxn(w, poses[tknOffset]));
 	}
 	// strength is one of ('strong', 'weak', 'both')
 	var strong = (strength=='strong' || strength=='both');
 	var weak = (strength=='weak' || strength=='both');
-	var thistok = $(this.item).find('.sent .w[data-w='+tknOffset+']');
+	
 	var classes = ' '+thistok.attr("class");
 	var sb = wb = false;
 	if (strong && classes.indexOf(' slu')>-1) {
-		sb = $(this.item).find('.sent .w.slu'+thistok.data("slu")).eq(0).data("w");
+		sb = $thisitem.find('.sent .w.slu'+thistok.data("slu")).eq(0).data("w");
 		if (sb!=tknOffset) return false;
-		sb = ($(this.item).find('.sent .w.slu'+thistok.data("slu")).filter(function (j) {
-				return (poses===null || poses[$(this).data("w")].match(posFilter));
+		sb = ($thisitem.find('.sent .w.slu'+thistok.data("slu")).filter(function (j) {
+				return (poses===null || filterFxn(getTok($(this).data("w")).text(), poses[$(this).data("w")]));
 			}).length>0);
 	}
 	if (weak && classes.indexOf(' wlu')>-1) {
-		wb = $(this.item).find('.sent .w.wlu'+thistok.data("wlu")).eq(0).data("w");
+		wb = $thisitem.find('.sent .w.wlu'+thistok.data("wlu")).eq(0).data("w");
 		if (wb!=tknOffset) return false;
-		wb = ($(this.item).find('.sent .w.wlu'+thistok.data("wlu")).filter(function (j) {
-				return (poses===null || poses[$(this).data("w")].match(posFilter));
+		wb = ($thisitem.find('.sent .w.wlu'+thistok.data("wlu")).filter(function (j) {
+				return (poses===null || filterFxn(getTok($(this).data("w")).text(), poses[$(this).data("w")]));
 			}).length>0);
 	}
+	if (firstOnly)
+		return (sb || wb) && (poses===null || filterFxn(w, poses[tknOffset]));
 	return (sb || wb);
 }
 MWEAnnotator.prototype.nextInChunk = function(tknOffset, strength) {
@@ -857,6 +870,140 @@ V_LABEL_SHORTCUTS = {
 		'`a': '`a',
 		'`j': '`j'
 };
+PREPS_MASTER = ["2", "4", "a", "abaft", "aboard", "about", "above", "abreast", "abroad", "absent", "across", 
+	"adrift", "afore", "aft", "after", "afterward", "afterwards", "against", "agin", "ago", 
+	"aground", "ahead", "aloft", "along", "alongside", "amid", "amidst", "among", "amongst", 
+	"an", "anent", "anti", "apart", "apropos", "apud", "around", "as", "ashore", "aside", 
+	"aslant", "astraddle", "astride", "asunder", "at", "athwart", "atop", "away", "back", 
+	"backward", "backwards", "bar", "barring", "before", "beforehand", "behind", "below", 
+	"beneath", "beside", "besides", "between", "betwixt", "beyond", "but", "by", "c.", "cept", 
+	"chez", "circa", "come", "concerning", "considering", "counting", "cum", "dehors", "despite", 
+	"down", "downhill", "downstage", "downstairs", "downstream", "downward", "downwards", 
+	"downwind", "during", "eastward", "eastwards", "ere", "ex", "except", "excepting", "excluding", 
+	"failing", "following", "for", "forbye", "fore", "fornent", "forth", "forward", "forwards", 
+	"frae", "from", "gainst", "given", "gone", "granted", "heavenward", "heavenwards", "hence", 
+	"henceforth", "home", "homeward", "homewards", "in", "including", "indoors", "inside", "into", 
+	"inward", "inwards", "leftward", "leftwards", "less", "lest", "like", "mid", "midst", "minus", 
+	"mod", "modulo", "mongst", "near", "nearby", "neath", "next", "nigh", "northward", "northwards", 
+	"notwithstanding", "o'", "o'er", "of", "off", "on", "onto", "onward", "onwards", "opposite", 
+	"out", "outdoors", "outside", "outta", "outward", "outwards", "outwith", "over", "overboard", 
+	"overhead", "overland", "overseas", "overtop", "pace", "past", "pending", "per", "plus", "pon", 
+	"post", "pro", "qua", "re", "regarding", "respecting", "rightward", "rightwards", "round", 
+	"sans", "save", "saving", "seaward", "seawards", "since", "skyward", "skywards", "southward", 
+	"southwards", "than", "thenceforth", "thro'", "through", "throughout", "thru", "thruout", 
+	"thwart", "'til", "till", "times", "to", "together", "touching", "toward", "towards", "under", 
+	"underfoot", "underground", "underneath", "unlike", "until", "unto", "up", "uphill", "upon", 
+	"upside", "upstage", "upstairs", "upstream", "upward", "upwards", "upwind", "v.", "versus", 
+	"via", "vice", "vis-a-vis", "vis-à-vis", "vs.", "w/", "w/i", "w/in", "w/o", "westward", 
+	"westwards", "while", "with", "withal", "within", "without", "worth", 
+	"a cut above", "a la", "à la", "according to", "after the fashion of", "ahead of", "all for", 
+	"all over", "along with", "apart from", "as far as", "as for", "as from", "as of", "as regards", 
+	"as to", "as well as", "aside from", "at a range of", "at the hand of", "at the hands of", 
+	"at the heels of", "back of", "bare of", "because of", "but for", "by courtesy of", 
+	"by dint of", "by force of", "by means of", "by reason of", "by the hand of", 
+	"by the hands of", "by the name of", "by virtue of", "by way of", "care of", "complete with", 
+	"contrary to", "courtesy of", "depending on", "due to", "except for", "exclusive of", "for all", 
+	"for the benefit of", "give or take", "having regard to", "in accord with", "in addition to", 
+	"in advance of", "in aid of", "in back of", "in bed with", "in behalf of", "in case of", 
+	"in common with", "in company with", "in connection with", "in consideration of", 
+	"in contravention of", "in default of", "in excess of", "in face of", "in favor of", 
+	"in favour of", "in front of", "in honor of", "in honour of", "in keeping with", "in lieu of", 
+	"in light of", "in line with", "in memoriam", "in need of", "in peril of", "in place of", 
+	"in proportion to", "in re", "in reference to", "in regard to", "in relation to", 
+	"in respect of", "in sight of", "in spite of", "in terms of", "in the course of", 
+	"in the face of", "in the fashion of", "in the grip of", "in the light of", "in the matter of", 
+	"in the midst of", "in the name of", "in the pay of", "in the person of", "in the shape of", 
+	"in the teeth of", "in the throes of", "in token of", "in view of", "in virtue of", 
+	"inclusive of", "inside of", "instead of", "irrespective of", "little short of", "more like", 
+	"near to", "next door to", "next to", "nothing short of", "of the name of", "of the order of", 
+	"on a level with", "on a par with", "on account of", "on behalf of", "on pain of", 
+	"on the order of", "on the part of", "on the point of", "on the score of", "on the strength of", 
+	"on the stroke of", "on top of", "other than", "out of", "out of keeping with", 
+	"out of line with", "outboard of", "outside of", "over against", "over and above", "owing to", 
+	"preparatory to", "previous to", "prior to", "pursuant to", "regardless of", "relative to", 
+	"round about", "short for", "short of", "subsequent to", "thanks to", "this side of", 
+	"to the accompaniment of", "to the tune of", "together with", "under cover of", "under pain of", 
+	"under sentence of", "under the heel of", "up against", "up and down", "up before", "up for", 
+	"up to", "upward of", "upwards of", "vis a vis", "vis à vis", "vis - a - vis", "vis - à - vis", 
+	"with reference to", "with regard to", "with respect to", "with the exception of", 
+	"within sight of"];
+SRIKUMAR_LABELS = ['Activity','Agent','Attribute','Beneficiary','Cause','Co-Particiants','Destination','Direction',
+				   'EndState','Experiencer','Instrument','Location','Manner','MediumOfCommunication','Numeric',
+				   'ObjectOfVerb','Opponent/Contrast','Other','PartWhole','Participant/Accompanier','PhysicalSupport',
+				   'Possessor','ProfessionalAspect','Purpose','Recipient','Separation','Source','Species','StartState',
+				   'Temporal','Topic','Via','`','`i','?'];
+SRIKUMAR_TOP_LABELS = {
+'about':['Location','Possessor','Topic'],
+'above':['Location','Other'],
+'across':['Location','Temporal'],
+'after':['Beneficiary','Cause','Direction','ObjectOfVerb','Other','Temporal'],
+'against':['Opponent/Contrast','Other','PhysicalSupport'],
+'along':['Direction','Location','Manner'],
+'among':['Choices','Location','PartWhole'],
+'around':['Location','Topic'],
+'as':['Attribute','Other'],
+'at':['Activity','Attribute','Cause','Instrument','Location','Numeric','ObjectOfVerb','ProfessionalAspect','Temporal'],
+'before':['Location','Other','Temporal'],
+'behind':['Beneficiary','Cause','Direction','Location','Other','Temporal'],
+'beneath':['Location','Other'],
+'beside':['Location','Other'],
+'between':['Choices','Location','Numeric','Opponent/Contrast','Temporal'],
+'by':['Agent','Attribute','Direction','Instrument','Journey','Location','Numeric','Other','Possessor','Source','Temporal'],
+'down':['Direction','Location','Temporal'],
+'during':['Temporal'],
+'for':['Beneficiary','Cause','Destination','Numeric','ObjectOfVerb','Other','ProfessionalAspect','Purpose','Temporal'],
+'from':['Agent','Attribute','Cause','Location','ObjectOfVerb','Opponent/Contrast','Separation','Source','StartState','Temporal'],
+'in':['Activity','Attribute','Destination','Location','Manner','MediumOfCommunication','PartWhole','ProfessionalAspect','Temporal'],
+'inside':['Destination','Location','Other','PartWhole','Temporal'],
+'into':['Activity','Destination','EndState','Location','Numeric','Temporal','Topic'],
+'like':['Manner','Other'],
+'of':['Attribute','Cause','Location','Numeric','ObjectOfVerb','PartWhole','Possessor','Source','Species','Temporal'],
+'off':['Direction','Location','Separation'],
+'on':['Activity','Experiencer','Instrument','Journey','Location','MediumOfCommunication','Numeric','Other','PhysicalSupport','Possessor','ProfessionalAspect','Temporal','Topic'],
+'onto':['Journey','Location','PhysicalSupport'],
+'over':['Instrument','Location','ObjectOfVerb','Other','Temporal','Topic'],
+'round':['Location','ObjectOfVerb','Topic'],
+'through':['Activity','Instrument','Journey','Location','Manner','ObjectOfVerb','Temporal'],
+'to':['Activity','Beneficiary','Destination','EndState','Location','Numeric','ObjectOfVerb','Other','Participant/Accompanier','Recipient','Temporal'],
+'toward':['Direction','EndState','Experiencer','ObjectOfVerb','Temporal'],
+'towards':['Direction','EndState','Experiencer','ObjectOfVerb','Temporal'],
+'with':['Attribute','Cause','Direction','Instrument','Manner','ObjectOfVerb','Opponent/Contrast','Other','Participant/Accompanier','ProfessionalAspect','Separation']
+};
+SRIKUMAR_LABEL_DESCRIPTIONS = {"PhysicalSupport": "The object of the preposition is physically in contact with and supports the governor or a subject of the governor if the governor is a verb or nominalization. \"stood with her back against the wall\", \"a water jug on the table\"",
+"Temporal": "The object of the preposition specifies the time of when an event occurs, either as an explicit temporal expression or by indicating another event as a reference. \"shortly after Christmas\", \"cooler at night\", \"met in 1985\"",
+ "Destination": "The object of the preposition is the destination of the motion indicated by the governor. \"put coal in the bath\", \"Sara got into her car\", \"walking to the shops\"",
+ "Beneficiary": "The object of the preposition is a beneficiary of the action indicated by the preposition's governor. \"fought for Napoleon\", \"be charming to them\", \"clean up after him\"",
+ "Instrument": "The object of the preposition indicates the means or the instrument for performing an action that is typically the governor. \"hold at knifepoint\", \"banged his head on the beam\", \"fill the bowl with water\"",
+ "Other": "This is the catch-all category. A preposition labeled as Other has relation, but this sense does not appear frequently enough to support creation of a new category. \"married above her\", \"years behind them\", \"tall for her age\"",
+ "PartWhole": "This relation indicates that one argument is a part or member of another. \"see a friend among them\", \"a slice of cake\"",
+ "Cause": "The objects indicates a cause for the governor. \"in bed with the flu\", \"died of cancer\", \"tired after work\"",
+ "ObjectOfVerb": "The object of the preposition is an object of the verb or the nominalization that is the governor of the preposition. This includes cases like \"construction of the library\", where the object of the preposition is an object of the underlying verb. \"saved from death\", \"cross with her\"", 
+ "Direction": "The prepositional phrase (that is, the preposition along with the object) indicates a direction that modifies the action which is expressed by the governor. \"crept up behind him\", \"drive by the house\", \"roll off the bed\"",
+ "Possessor": "The governor of the preposition is something belonging to the object or an inherent quality of the object . This relation includes familial relations. \"a look about her\", \"son of a friend\", \"his son by his third wife\"",
+ "Experiencer": "The object of the preposition denotes the entity that is target or subject of the action, thought or feeling that is usually indicated by the governor. \"focus attention on her\", \"he was warm toward her\"",
+ "Separation": "The relation indicates separation or removal. The object of the preposition is the entity that is removed. \"tear the door off its hinges\", \"part with possessions\", \"the party was ousted from power\"",
+ "Purpose": "The object of the preposition speci\ufb01es the purpose (i.e., a result that is desired, intention or reason for existence) of the governor. \"networks for the exchange of information\", \"tools for making the picture frame\"",
+ "Recipient": "The object of the preposition identi\ufb01es the person or thing receiving something. \"unkind to her\" \"donated to the hospital\"",
+ "Opponent/Contrast": "This relation indicates a collision, con\ufb02ict or contrast and the object of the preposition refers to one or more entities involved. \"fight against crime\", \"the wars between Russia and Poland\", \"fought with another man\"",
+ "Participant/Accompanier": "The object of the preposition indicates an entity which accompanies another entity, which is typically indicated by either the governor of the preposition or the subject of the governor. \"he is married to Emma\", \"a map pinned to the wall\"",
+ "ProfessionalAspect": "This relation signi\ufb01es a professional relationship between the governor (or the subject of the governor, if the governor is a verb) and the object of preposition, which is an employer, a profession, an institution or a business establishment. \"tutor for the University\", \"bank with TSB\", \"works in publishing\"",
+ "StartState": "The object of the preposition indicates the state or condition that an entity has left. \"recovered from the disease\", \"a growth from $2.2 billion to $2.4 billion\"",
+ "EndState": "The object of the preposition indicates the resultant state of an entity that is undergoing change. The governor of the preposition is usually a verb or noun denoting transformation. \"protest turned into a violent confrontation\", \"she was moved to tears\", \"return towards traditional Keynesianism\"",
+ "Activity": "Describes the relationship between some entity and an activity, an ordeal or a process that can be a verbal noun or a gerund. Note that the object of the preposition is the activity here. \"He is into jet-skiing\", \"out on errands\", \"good at boxing\"",
+ "Co-Participants": "The preposition indicates a choice, sharing or differentiation and involves multiple participants, represented by the object. \"drop in tooth decay among children\", \"links between science and industry\", \"choose between two options\"",
+ "Numeric": "The object of the preposition indicates a numeric quantity (age, price, percentage, etc). \"driving at 50mph\", \"crawled for 300 yards\", \"a boy of 15\"",
+ "Via": "This is an infrequent relation where the object of the preposition indicates a mode of transportation or a path for travel. The governor can be action indicating movement or travel or a noun denoting passengers. \"traveling by bus\", \"he is on his way\", \"sleep on the plane\"",
+ "Source": "The object of the preposition indicates the provenance of the governor or the subject of the governor. This includes cases where the object is the place of origin, the source of information or the creator of an artifact. \"I am from Hackeney\", \"book by Hemmingway\", \"paintings of Rembrandt\"",
+ "Attribute": "The object of the preposition indicates some attribute of either the governor or the subject/object of the governor in case of verb-attached prepositions. \"sell at a loss\", \"paint made from resin\", \"Mozart's Piano Concerto in E flat\"",
+ "MediumOfCommunication": "The prepositional phrase indicates the medium or language of some form of communication or idea. The object is, in a general sense, a 'mode of communication'. This includes languages \"say it in French\" media like TV or internet \"saw it on a website\" or specific instances of these \"saw it on the Sopranos\".",
+ "Agent": "The object of the preposition is the agent of the action indicated by the attachment point. This primarily covers the use of the preposition 'by' in a passive construction. \"Understood by the customers\", \"allegations from the FDA\", \"the address by the officer\"",
+ "Topic": "The object of the preposition denotes the subject or topic under consideration. In many cases, the preposition can be replaced by the phrase 'on the subject of'. The governor of the preposition can be a verb or nominalization that implies an action or analysis or a noun that indicates an information store. \"thinking about you\", \"book on careers\", \"debate over unemployment\"",
+ "Manner": "The prepositional phrase indicates the manner in which an action is performed. The action is typically the governor of the preposition. \"frame the definition along those lines\", \"disappear in a flash\", \"shout with pleasure\"",
+ "Species": "This expresses the relationship between a general category or type and the thing being specified which belongs to the category. The governor is a noun indicating the general category and the object is an instance of that category. \"the city of Prague\", \"this type of book\"",
+ "Location": "The object of the preposition indicates the means or the instrument for performing an action that is typically the governor. \"look about the room\", \"she stood before her\", \"sat beside her\"",
+ '`': '`: No semantic function; purely collocational or syntactic',
+ '`i': "Infinitival TO (with no additional semantics)",
+ '?': 'Unsure. You may be more specific by listing one or more predefined category names (separated by commas), followed by "?".'};
 GENERAL_LABEL_SHORTCUTS = {'`': '`', '?': '?'};
 ALL_LABEL_SHORTCUTS = $.extend({}, N_LABEL_SHORTCUTS, V_LABEL_SHORTCUTS, GENERAL_LABEL_SHORTCUTS);
 
@@ -866,12 +1013,18 @@ function TokenLabelAnnotator(I, itemId) {
 		<? if ($nsst) { ?>N_LABEL_SHORTCUTS, <? } ?>
 		<? if ($vsst) { ?>V_LABEL_SHORTCUTS, <? } ?>
 		GENERAL_LABEL_SHORTCUTS);
+	<? if ($psst) { ?>
+	this.labels = SRIKUMAR_LABELS;
+	this.labeldescriptions = SRIKUMAR_LABEL_DESCRIPTIONS;
+	<? } else { ?>
 	this.labels = Object.keys(this.labelShortcuts); //['LOCATION', 'PERSON', 'TIME', 'GROUP', 'OTHER', '?', '`'];
 	this.labeldescriptions = {'OTHER': 'miscellaneous tag',
 		'?': '(unsure; you can also tentatively specify one or more possibilities by following them with ?)', 
 		'`': '(skip for now)',
 		'`a': 'auxiliary',
 		'`j': 'adjectival'};
+	<? } ?>
+	this.toplabels = [];
 	if (arguments.length == 0) return; // stop -- necessary for inheritance
 	
 	Annotator(this, I, itemId);
@@ -882,6 +1035,12 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 	a.word = wordelt;
 	a.tokenOffset = wordOffset;
 	a.labels = this.labels;
+	a.toplabels = this.toplabels;
+	<? if ($psst) { ?>
+	var w = $(a.word).text().toLowerCase();
+	if (SRIKUMAR_TOP_LABELS[w])
+		a.toplabels = SRIKUMAR_TOP_LABELS[w];
+	<? } ?>
 	a.labelShortcuts = this.labelShortcuts;
 	a.labeldescriptions = this.labeldescriptions;
 	this.actors.push(a);
@@ -894,11 +1053,27 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 		var $word = $(word);
 		var wordId = $(this.word).attr("id");
 		
-		var labelsWithShortcuts = [];
+		// sort the labels, putting the top ones first (the subset that are in the top 
+		// can differ for each dropdown instance)
+		var toplabels = (this.toplabels); // ? this.toplabels : [];
+		var orderedLabels = [];
+		for (var i=0; i<toplabels.length; i++) {
+			orderedLabels.push(this.toplabels[i]);
+		}
 		for (var i=0; i<this.labels.length; i++) {
-			var shortcut = this.labelShortcuts[this.labels[i]];
-			labelsWithShortcuts.push({"label": (shortcut) ? '<tt style="background-color: #555; margin-left: -5px; padding: 2px; border-radius: 4px; color: #fff;">'+shortcut+'</tt>' + ' ' + this.labels[i] : this.labels[i], 
-									  "value": this.labels[i],
+			if (orderedLabels.indexOf(this.labels[i])==-1)
+				orderedLabels.push(this.labels[i]);
+		}
+
+		var labelsWithShortcuts = [];
+		
+		for (var i=0; i<orderedLabels.length; i++) {
+			var shortcut = this.labelShortcuts[orderedLabels[i]];
+			var thelabel = orderedLabels[i];
+			if (i<toplabels.length)	// we are still in the top labels
+				thelabel = '<span class="toplabel">'+thelabel+'</span>'
+			labelsWithShortcuts.push({"label": (shortcut) ? '<tt style="background-color: #555; margin-left: -5px; padding: 2px; border-radius: 4px; color: #fff;">'+shortcut+'</tt>' + ' ' + thelabel : thelabel, 
+									  "value": orderedLabels[i],
 									  "shortcut": shortcut});
 		}
 		
@@ -1031,11 +1206,11 @@ function PrepTokenAnnotator(I, itemId) {
 	TokenLabelAnnotator.call(this, I, itemId);
 	this._name = 'PrepTokenAnnotator';
 	this.PREPS = ['of','to','for','by','with','from','at','over','out','about','in','on','off','as','down','under','above','across','after','against','ago','among','during','before','behind','below','beneath','beside','besides','between','beyond','away','back','into','near','since','until','together','toward','towards','apart','within','without'];
-	this.labels = ['Agent', 'Audience', 'Cause/Reason', 'Comitative', 'Communicator', 'Comparison', 'Cost/Compensation/Price', 
+	var tentative_labels = ['Agent', 'Audience', 'Cause/Reason', 'Comitative', 'Communicator', 'Comparison', 'Cost/Compensation/Price', 
  					'Destination/Direction', 'Duration', 'Giver', 'GOAL', 'Instrument', 'Location', 'Manner', 'Means', 'Medium', 
 					'Origin', 'OTHER', 'PATH', 'Patient/Affected', 'Purpose', 'Recipient/Beneficiary/Maleficiary', 'Reciprocal/Co-participant',
 					'Result', 'SOURCE', 'State', 'Time', 'Topic/Content', 'Trajectory', 'X', '?'];
-	this.labeldescriptions = {'X': 'X: No semantic function; purely collocational or syntactic',
+	var tentative_labeldescriptions = {'X': 'X: No semantic function; purely collocational or syntactic',
 					     'Duration': 'Duration: span of time of an event, e.g. "leave FOR a few days", or interval, "once IN a million years"',
 						 'Manner': 'Manner: e.g. "communicate IN a clear and comprehensible way" [FrameNet]',
 						 'Means': 'Means: e.g. "communicate BY signalling in some such subliminal manner" [FrameNet]',
@@ -1046,6 +1221,16 @@ function PrepTokenAnnotator(I, itemId) {
 						 'PATH': 'PATH: Miscellaneous path (not Trajectory, Manner, Means, or Medium)',
 						 'OTHER': 'OTHER: Semantic function not otherwise listed. You may instead enter "?" followed by an ad hoc category name.',
 						 '?': 'Unsure. You may be more specific by listing one or more predefined category names (separated by commas), followed by "?".'};
+	var srikumar_labels = ['Activity','Agent','Attribute','Beneficiary','Cause','Co-Particiants','Destination','Direction',
+						   'EndState','Experiencer','Instrument','Location','Manner','MediumOfCommunication','Numeric',
+						   'ObjectOfVerb','Opponent/Contrast','Other','PartWhole','Participant/Accompanier','PhysicalSupport',
+						   'Possessor','ProfessionalAspect','Purpose','Recipient','Separation','Source','Species','StartState',
+						   'Temporal','Topic','Via','`','?'];
+	var srikumar_labeldescriptions = {'`': '`: No semantic function; purely collocational or syntactic',
+					     'Other': 'Other: Semantic function not otherwise listed. You may instead enter "?" followed by an ad hoc category name.',
+						 '?': 'Unsure. You may be more specific by listing one or more predefined category names (separated by commas), followed by "?".'};
+	this.labels = srikumar_labels;
+	this.labeldescriptions = srikumar_labeldescriptions;
 }
 PrepTokenAnnotator.prototype = new TokenLabelAnnotator();
 PrepTokenAnnotator.prototype.constructor = PrepTokenAnnotator;
@@ -1268,10 +1453,10 @@ ChunkLabelAnnotator.prototype.updateTargets = function(updateInfo) {
 		this.deserialize(false);	// look up this actor's value from overall annotator value (may have changed in the versions browser)
 		
 		// update defaults to reflect the current MWE analysis
-		if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, theann.posFilter)) {
+		if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, theann.filterFxn, theann.filterFxn==ChunkLabelAnnotator.prototype.P_FILTER)) {
 			$(a.target).prop("disabled","").prop("required","required");
 			a.submittable = true;
-			if (theann.posFilter==ChunkLabelAnnotator.prototype.V_FILTER && AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, ChunkLabelAnnotator.prototype.N_FILTER)) {
+			if (theann.filterFxn==ChunkLabelAnnotator.prototype.V_FILTER && AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, ChunkLabelAnnotator.prototype.N_FILTER)) {
 				// this chunk has BOTH a noun and a verb, so allow either kind of label
 				a.labelShortcuts = ALL_LABEL_SHORTCUTS;
 				a.labels = Object.keys(ALL_LABEL_SHORTCUTS);
@@ -1281,7 +1466,7 @@ ChunkLabelAnnotator.prototype.updateTargets = function(updateInfo) {
 			if (theann.constructor.started) a.aparecium();
 			//$(a.target).attr("placeholder", "X").removeAttr("required");
 		}
-		else if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, '')) {
+		else if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, function (word, pos) { return true; })) {
 			// would begin a chunk but fails POS filter
 			a.submittable = (a.target.value!=="");	// so previous values will be saved when annotating other POSes
 			$(a.target).prop("disabled","disabled").prop("required","");
@@ -1306,13 +1491,13 @@ ChunkLabelAnnotator.prototype.validate = function() {
 }
 
 // global variables for the annotation protocol
-annotators = [ItemNoteAnnotator, MWEAnnotator <?= (($prep) ? ', PrepTokenAnnotator' : '') ?> <?= (($nsst || $vsst) ? ', ChunkLabelAnnotator' : '') ?>];	//, ChunkLabelAnnotator];
+annotators = [ItemNoteAnnotator, MWEAnnotator <?= (($prep) ? ', PrepTokenAnnotator' : '') ?> <?= (($nsst || $vsst || $psst) ? ', ChunkLabelAnnotator' : '') ?>];	//, ChunkLabelAnnotator];
 II = []; // item offset on page => DOM node
 AA = []; // annotators for each item
 
 // stages allow different kinds of annotation to become available to the user at different times
 // 'submit' progresses to the next stage until all are exhausted, then submits the form
-<? $num_stages = 1+intval($prep)+intval($nsst || $vsst); ?>
+<? $num_stages = 1+intval($prep)+intval($nsst || $vsst || $psst); ?>
 INIT_STAGE = <?= ($embedded) ? $num_stages : $init_stage ?>;
 CUR_STAGE = 0;
 NUM_STAGES = <?= $num_stages ?>;
@@ -1324,13 +1509,17 @@ ItemNoteAnnotator.prototype.stopStage = -1;
 MWEAnnotator.prototype.stopStage = -1;
 PrepTokenAnnotator.prototype.stopStage = -1;
 ChunkLabelAnnotator.prototype.stopStage = -1;
-ChunkLabelAnnotator.prototype.N_FILTER = /^(N|ADD)/;
-ChunkLabelAnnotator.prototype.V_FILTER = /^V/;
-ChunkLabelAnnotator.prototype.NV_FILTER = /^(N|ADD|V)/;
-<? if ($nsst || $vsst) { ?>
-ChunkLabelAnnotator.prototype.posFilter = ChunkLabelAnnotator.prototype.<?= ($nsst) ? 'N' : '' ?><?= ($vsst) ? 'V' : '' ?>_FILTER;
+ChunkLabelAnnotator.prototype.N_FILTER = function (word, pos) { return pos.match(/^(N|ADD)/); };
+ChunkLabelAnnotator.prototype.V_FILTER = function (word, pos) { return pos.match(/^V/); };
+ChunkLabelAnnotator.prototype.NV_FILTER = function (word, pos) { return pos.match(/^(N|ADD|V)/); };
+ChunkLabelAnnotator.prototype.PREPS = ['of','to','for','by','with','from','at','over','out','about','in','on','off','as','down','under','above','across','after','against','ago','among','during','before','behind','below','beneath','beside','besides','between','beyond','away','back','into','near','since','until','together','toward','towards','apart','within','without'];
+ChunkLabelAnnotator.prototype.P_FILTER = function (word, pos) {	// should the given token be tagged as a preposition?
+	return pos.match(/^(RP|TO)/) || (pos.match(/^(IN|RB)/) && PREPS_MASTER.indexOf(word.toLowerCase())>-1);
+}	// TODO: use multiword entries in PREPS_MASTER?
+<? if ($nsst || $vsst || $psst) { ?>
+ChunkLabelAnnotator.prototype.filterFxn = ChunkLabelAnnotator.prototype.<?= ($psst) ? 'P' : '' ?><?= ($nsst) ? 'N' : '' ?><?= ($vsst) ? 'V' : '' ?>_FILTER;
 <? } else { ?>
-ChunkLabelAnnotator.prototype.posFilter = "";
+ChunkLabelAnnotator.prototype.filterFxn = function (word, pos) { return true; };
 <? } ?>
 
 function ann_init() {
