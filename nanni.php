@@ -1046,12 +1046,18 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 	this.actors.push(a);
 	a.getValue = function () {
 		return this.target.value;
-	}
-	a.firstrender = function () {
-		var theactor = this;
-		var word = this.word;
-		var $word = $(word);
-		var wordId = $(this.word).attr("id");
+	};
+	a.populateLabels = function (labelShortcuts) {
+		/* Refreshes the dropdown menu from the contents of this.labels and this.labelShortcuts 
+		 * (and optionally, this.toplabels).
+		 * If labelShortcuts is provided, first assigns that to this.labelShortcuts 
+		 * and its keys to this.labels.
+		 */
+		
+		if (arguments.length>0) {
+			this.labelShortcuts = labelShortcuts;
+			this.labels = Object.keys(this.labelShortcuts);
+		}
 		
 		// sort the labels, putting the top ones first (the subset that are in the top 
 		// can differ for each dropdown instance)
@@ -1077,11 +1083,22 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 									  "shortcut": shortcut});
 		}
 		
+		// update control
+		$(this.target).autocomplete("option", "source", labelsWithShortcuts);
+	};
+	a.firstrender = function () {
+		var theactor = this;
+		var word = this.word;
+		var $word = $(word);
+		var wordId = $(this.word).attr("id");
+		
+		
+		
 		// http://api.jqueryui.com/autocomplete/
 		// TODO: depending on defaults/preannotations, set placeholder for preps belonging to an MWE
 		var $control = $('<input class="tokenlabel" />').attr({"id": "toktag_"+this.ann.itemId+"_"+wordId.replace(/^i\d+/, ''), 
 			"name": "tag_"+this.ann.itemId+"_"+wordId.replace(/^i\d+/, '')}).autocomplete({ 
-			source: labelsWithShortcuts, 
+			source: [], // will be populated by populateLabels()
 			/*source: function( request, response ) {
 				var matcher = new RegExp( "^" + $.ui.autocomplete.escapeRegex( request.term ), "i" );
 				response( $.grep( tags, function( item ){
@@ -1132,6 +1149,9 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 			$control.val(this.initval);
 		
 		this.target = $control.get(0);
+		
+		this.populateLabels();
+		
 		//var width = this.ann.computeVisibleWidth(this, $control, $word);
 		$word.append($control);
 
@@ -1162,7 +1182,7 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 			this.evanesco();
 			this.ann.constructor.stopped = true;
 		}
-	}
+	};
 	a.rerender = function () {	// if a value may have changed, decide whether to show/hide the control
 		$control = $(this.target);
 		if ($control.prop("readonly") && $control.val()==="") {
@@ -1174,7 +1194,7 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 //console.log("rerender true");
 			return true;
 		}
-	}
+	};
 	return a;
 }
 /* The width that the *word* should have when the control is visible */
@@ -1456,12 +1476,25 @@ ChunkLabelAnnotator.prototype.updateTargets = function(updateInfo) {
 		if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, theann.filterFxn, theann.filterFxn==ChunkLabelAnnotator.prototype.P_FILTER)) {
 			$(a.target).prop("disabled","").prop("required","required");
 			a.submittable = true;
-			if (theann.filterFxn==ChunkLabelAnnotator.prototype.V_FILTER && AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, ChunkLabelAnnotator.prototype.N_FILTER)) {
-				// this chunk has BOTH a noun and a verb, so allow either kind of label
-				a.labelShortcuts = ALL_LABEL_SHORTCUTS;
-				a.labels = Object.keys(ALL_LABEL_SHORTCUTS);
-				// TODO: repopulate the dropdown with all labels
+			if (theann.filterFxn==ChunkLabelAnnotator.prototype.V_FILTER) {
+				if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, ChunkLabelAnnotator.prototype.N_FILTER))
+					// this chunk has BOTH a noun and a verb, so allow either kind of label
+					a.populateLabels(ALL_LABEL_SHORTCUTS);
+				else // this chunk has only verbs
+					a.populateLabels($.extend({}, V_LABEL_SHORTCUTS, GENERAL_LABEL_SHORTCUTS));
 				a.validate();	// if the noun label was saved, remove the invalid flag
+			}
+			else if (theann.filterFxn==ChunkLabelAnnotator.prototype.NV_FILTER) {
+				// we are labeling nouns and verbs
+				if (!AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, ChunkLabelAnnotator.prototype.N_FILTER))
+					// but this chunk contains no nouns: limit to verbs
+					a.populateLabels($.extend({}, V_LABEL_SHORTCUTS, GENERAL_LABEL_SHORTCUTS));
+				else if (!AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, ChunkLabelAnnotator.prototype.V_FILTER))
+					// but this chunk contains no verbs: limit to nouns
+					a.populateLabels($.extend({}, N_LABEL_SHORTCUTS, GENERAL_LABEL_SHORTCUTS));
+				else // this chunk contains nouns and verbs
+					a.populateLabels(ALL_LABEL_SHORTCUTS);
+				a.validate();
 			}
 			if (theann.constructor.started) a.aparecium();
 			//$(a.target).attr("placeholder", "X").removeAttr("required");
