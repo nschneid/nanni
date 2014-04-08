@@ -883,7 +883,7 @@ PREPS_MASTER = ["2", "4", "a", "abaft", "aboard", "about", "above", "abreast", "
 	"failing", "following", "for", "forbye", "fore", "fornent", "forth", "forward", "forwards", 
 	"frae", "from", "gainst", "given", "gone", "granted", "heavenward", "heavenwards", "hence", 
 	"henceforth", "home", "homeward", "homewards", "in", "including", "indoors", "inside", "into", 
-	"inward", "inwards", "leftward", "leftwards", "less", "lest", "like", "mid", "midst", "minus", 
+	"inward", "inwards", "leftward", "leftwards", "less", "like", "mid", "midst", "minus", 
 	"mod", "modulo", "mongst", "near", "nearby", "neath", "next", "nigh", "northward", "northwards", 
 	"notwithstanding", "o'", "o'er", "of", "off", "on", "onto", "onward", "onwards", "opposite", 
 	"out", "outdoors", "outside", "outta", "outward", "outwards", "outwith", "over", "overboard", 
