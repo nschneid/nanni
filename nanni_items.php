@@ -262,7 +262,7 @@ function arraysEq(x, y) {
 
 <?
 
-if (!isset($_REQUEST['split'])) {
+if (!isset($_REQUEST['split']) && !isset($_REQUEST['q'])) {
 	// list all splits under this user
 ?><title>Batches (<?= $_SERVER['REMOTE_USER'] ?> as <?= $u ?>)</title>
 </head>
@@ -277,19 +277,25 @@ if (!isset($_REQUEST['split'])) {
 	$iFrom = -1;
 }
 else {
-	$split = $_REQUEST['split'];
-?><title>Item Index: <?= $split ?> (<?= $_SERVER['REMOTE_USER'] ?> as <?= $u ?>)</title>
-</head>
-<body<?= ($embedded) ? ' class="embedded"' : '' ?>>
-<?
 	if (!array_key_exists('from', $_REQUEST)) {	// demo mode
 		$iFrom = 0;
 		$iTo = -1;
+		$split = $_REQUEST['split'];
 	}
 	else {
 		$iFrom = intval($_REQUEST['from']);
 		$iTo = (array_key_exists('to', $_REQUEST)) ? intval($_REQUEST['to']) : -1;
+		if (isset($_REQUEST['split']))
+			$split = $_REQUEST['split'];
+		else if (isset($_REQUEST['q']))
+			$query = $_REQUEST['q'];
 	}
+	
+?><title>Item Index: <?= $split ?> (<?= $_SERVER['REMOTE_USER'] ?> as <?= $u ?>)</title>
+</head>
+<body<?= ($embedded) ? ' class="embedded"' : '' ?>>
+<?
+
 }
 
 
@@ -303,12 +309,11 @@ if ($iFrom>-1) {
 	$perpage = 1;
 	*/
 	
-	$kv = "$udir/$split.nanni";
 	
 	
 	($iFrom>=0 && ($iTo>$iFrom || $iTo==-1)) or die("You have finished annotating the current batch. Thanks!");
 	
-	$IN_FILE = "$ddir/$split";
+	$IN_FILE = (isset($query)) ? "$qdir/$query.query" : "$ddir/$split";
 	$f = fopen($IN_FILE, 'r');
 	
 	
@@ -326,7 +331,9 @@ if ($iFrom>-1) {
 				$entry = htmlspecialchars($entry, ENT_QUOTES);	
 				$entry = explode("\t", $entry);
 				$sentId = $entry[0];
-				$tokenizedS = $entry[1];
+				$tokenizedS = (isset($query)) ? $entry[2] : $entry[1];
+				if (isset($query))
+					$split = $entry[1];
 				//$tagsS = $entry[2];
 				$tokens = explode(' ', $tokenizedS);
 				//$tags = explode(' ', $tagsS);
@@ -344,7 +351,7 @@ if ($iFrom>-1) {
 				
 				
 				// load user's current version of the sentence, if available
-				$v = get_key_value($kv, $sentId);
+				$v = get_key_value("$udir/$split.nanni", $sentId);
 				if ($v!==null) {
 					$parts = explode("\t", $v);
 					$timestamp = intval($parts[1]);

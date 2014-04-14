@@ -119,10 +119,12 @@ else {
 
 
 if ($iFrom>-1) {
-	if (isset($_REQUEST['split']))
+	if (isset($_REQUEST['q']))
+		$query = $_REQUEST['q'];
+	else if (isset($_REQUEST['split']))
 		$split = $_REQUEST['split'];
 	else
-		die("missing: split");
+		die("missing: query or split");
 	
 	/*
 	$perpage = intval($_REQUEST['perpage']);
@@ -131,10 +133,12 @@ if ($iFrom>-1) {
 	*/
 	$perpage = 1;	// TODO: allow multiple sentences per page
 
-	$kv = "$udir/$split.nanni";
+	
 	
 	if (array_key_exists("submit", $_REQUEST)) {	// save data from a page of annotation
-		
+		if (!isset($_REQUEST['split']))
+			die("missing: query or split");
+		$split = $_REQUEST['split'][0];
 		$TAG_FILE = "$udir/$split.nanni.all";
 		$tagF = fopen($TAG_FILE, 'a');
 		if (!$tagF) die("Unable to save annotations: " . getcwd() . "/$TAG_FILE");
@@ -151,10 +155,21 @@ if ($iFrom>-1) {
 			$avals = '"initval": "' . addslashes(trim(preg_replace('/\s+/', ' ', $_REQUEST['initval'][$I]))) . '",';
 			if (array_key_exists('beforeVExpand', $_REQUEST))	// annotation prior to clicking the "versions" link
 				$avals .= '  "beforeVExpand": "' .  preg_replace('/\s+/', ' ', trim(addslashes($_REQUEST['beforeVExpand'][$I]))) . '",';
+			if (isset($query))
+				$avals .= '  "query": "' . addslashes($query) . '",';
 			$chklbls = ($_REQUEST['chklbls']) ? $_REQUEST['chklbls'][$I] : '{}';
 			$val = $_REQUEST['loadtime'] . "\t" . mktime() . "\t@$u\t$ann\t{{$avals}   \"sgroups\": " . $_REQUEST['sgroups'][$I] . ",   \"wgroups\": " . $_REQUEST['wgroups'][$I] . (($prep) ? ",   \"preps\": " . $_REQUEST['preps'][$I] : '') . (($nsst || $vsst || $psst) ? ",   \"chklbls\": $chklbls" : '') . ",   \"url\": \"" . $_SERVER["SERVER_NAME"].$_SERVER["REQUEST_URI"] . "\",   \"session\": \"" . session_id() . "\",  \"authuser\": \"$user\"}\t$mwe\t$note\n";
+			
+			// check if a new split
+			if ($_REQUEST['split'][$I]!=$split) {
+				fclose($tagF);
+				$split = $_REQUEST['split'][$I];
+				$TAG_FILE = "$udir/$split.nanni.all";
+				$tagF = fopen($TAG_FILE, 'a');
+				if (!$tagF) die("Unable to save annotations: " . getcwd() . "/$TAG_FILE");
+			}
 			fwrite($tagF, "$key\t$val");
-			update_key_value($kv, $key, $val);
+			update_key_value("$udir/$split.nanni", $key, $val);
 		}
 		fclose($tagF);
 		
@@ -171,14 +186,15 @@ if ($iFrom>-1) {
 				$qsarray[$k] = $_POST[$k];
 			}
 		}
+		// exception: split (array in POST, single value in GET)
+		$qsarray['split'] = $_GET['split'];
 		header('Location: ?' . http_build_query($qsarray));
 	}
 	
 	($iFrom>=0 && ($iTo>$iFrom || $iTo==-1)) or die("You have finished annotating the current batch. Thanks!");
 	
-	$IN_FILE = "$ddir/$split";
+	$IN_FILE = (isset($query)) ? "$qdir/$query.query" : "$ddir/$split";
 	$f = fopen($IN_FILE, 'r');
-	
 	
 	// Load the input sentences
 	$SENTENCES = array();
@@ -195,7 +211,10 @@ if ($iFrom>-1) {
 				$entry = htmlspecialchars($entry, ENT_QUOTES);	
 				$entry = explode("\t", $entry);
 				$sentId = $entry[0];
-				$tokenizedS = $entry[1];
+				
+				$tokenizedS = (isset($query)) ? $entry[2] : $entry[1];
+				if (isset($query))
+					$split = $entry[1];
 				//$tagsS = $entry[2];
 				$tokens = explode(' ', $tokenizedS);
 				//$tags = explode(' ', $tagsS);
@@ -203,7 +222,7 @@ if ($iFrom>-1) {
 				//for ($i=0; $i<count($tokens); $i++)
 				//	$taggedS .= "$tokens[$i]/$tags[$i] ";
 	
-				$sentdata = array('sentence' => trim($tokenizedS), 'sentenceId' => $sentId);
+				$sentdata = array('sentence' => trim($tokenizedS), 'sentenceId' => $sentId, 'split' => $split);
 
 
 				if ($reconcile!==null) {
@@ -221,7 +240,7 @@ if ($iFrom>-1) {
 						$sentdata['versions'] = get_key_values(get_user_dir($_REQUEST['versions'])."/$split.nanni", $sentId);
 					}
 					else {
-						$v = get_key_value($kv, $sentId);
+						$v = get_key_value("$udir/$split.nanni", $sentId);
 						if ($v!==null) {
 							$parts = explode("\t", $v);
 							$tstamp = intval($parts[1]);
@@ -1961,7 +1980,7 @@ function doSubmit() {
 	return ann_submit();
 }
 </script>
-<title>Multiword Expression Annotation: #<?= $iFrom ?> in <?= $split ?> (<?= $_SERVER['REMOTE_USER'] ?> as <?= $u ?>)</title>
+<title>Multiword Expression Annotation: #<?= $iFrom ?> in <?= (isset($query)) ? $query : $split ?> (<?= $_SERVER['REMOTE_USER'] ?> as <?= $u ?>)</title>
 </head>
 <body<?= ($embedded) ? ' class="embedded"' : '' ?>>
 
@@ -1983,6 +2002,7 @@ function doSubmit() {
 
 <div id="_<?= $sid ?>" class="item">
 <input type="hidden" name="sentid[]" value="<?= $sid ?>" />
+<input type="hidden" name="split[]" value="<?= $s['split'] ?>" />
 <input type="hidden" name="initval[]" class="initval" value="<?= $s['initval'] ?>" />
 <input type="hidden" name="initnote[]" class="initnote" value="<?= $s['note'] ?>" />
 <input type="hidden" name="beforeVExpand[]" class="beforeVExpand" value="" />
@@ -2090,7 +2110,9 @@ function versioncmp($a, $b) {
 
 <div class="controls">
 <p>
-	<input type="hidden" name="split" value="<?= $split ?>" />
+<? if (isset($query)) { ?>
+	<input type="hidden" name="q" value="<?= $query ?>" />
+<? } ?>
 	<input type="hidden" name="from" value="<?= ($iFrom+$perpage) ?>" />
 	<input type="hidden" name="to" value="<?= $iTo ?>" />
 	<input type="hidden" name="loadtime" value="<?= mktime(); ?>" />

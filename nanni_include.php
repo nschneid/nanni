@@ -311,6 +311,7 @@ $udir = get_user_dir($u);	// user directory
 $ddir = "data";	// data directory
 $edir = "extra";	// extras directory
 $pdir = "pos";	// POS directory
+$qdir = "query";	// query directory
 
 $lang = "EN";
 
