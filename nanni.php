@@ -98,7 +98,9 @@ $new = $_REQUEST['new'];
 if (!$new)
 	$new = array_key_exists('new', $_REQUEST);
 if ($embedded) $new = false;
-$reconcile = (isset($_REQUEST['reconcile']) && !$embedded) ? $_REQUEST['reconcile'] : null;	// 2 users whose annotations should be reconciled
+$reconcile = (isset($_REQUEST['reconcile']) && !$embedded) ? $_REQUEST['reconcile'] : null;	// user whose annotations should be imported, or 2 users whose annotations should be reconciled
+if ($reconcile!==null && !is_array($reconcile))
+	$reconcile = array(0 => $reconcile);
 $versions = array_key_exists('versions', $_REQUEST);	// the version browser itself
 $instructionsCode = (array_key_exists('inst', $_REQUEST)) ? $_REQUEST['inst'] : '';
 $instructions = "mwe_ann_instructions$instructionsCode.md";
@@ -226,11 +228,14 @@ if ($iFrom>-1) {
 
 
 				if ($reconcile!==null) {
-					$Adata = get_key_value(get_user_dir($reconcile[0]) . "/$split.nanni", $sentId);
+					$A = $reconcile[0];
+					$Adata = get_key_value(get_user_dir($A) . "/$split.nanni", $sentId);
 					$Aparts = explode("\t", $Adata);
 					$Atstamp = intval($Aparts[1]);
 					
-					$Bdata = get_key_value(get_user_dir($reconcile[1]) . "/$split.nanni", $sentId);
+					$B = $reconcile[count($reconcile)-1];
+					$Bdata = get_key_value(get_user_dir($B) . "/$split.nanni", $sentId);
+					// possibly the same user as A, in which case that user's annotations will simply be imported
 					$Bparts = explode("\t", $Bdata);
 					$Btstamp = intval($Bparts[1]);
 				}
