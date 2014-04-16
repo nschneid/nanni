@@ -157,6 +157,9 @@ if ($iFrom>-1) {
 			$avals = '"initval": "' . addslashes(trim(preg_replace('/\s+/', ' ', $_REQUEST['initval'][$I]))) . '",';
 			if (array_key_exists('beforeVExpand', $_REQUEST))	// annotation prior to clicking the "versions" link
 				$avals .= '  "beforeVExpand": "' .  preg_replace('/\s+/', ' ', trim(addslashes($_REQUEST['beforeVExpand'][$I]))) . '",';
+			if (isset($_REQUEST['reconciled'])) {
+				$avals .= '  "reconciled": {"users": ' . json_encode($_REQUEST['reconciled'][$I]) . ', "times": ' . json_encode(array_map(intval, $_REQUEST['reconciledtime'][$I])) . '},';
+			}
 			if (isset($query))
 				$avals .= '  "query": "' . addslashes($query) . '",';
 			$chklbls = ($_REQUEST['chklbls']) ? $_REQUEST['chklbls'][$I] : '{}';
@@ -228,16 +231,37 @@ if ($iFrom>-1) {
 
 
 				if ($reconcile!==null) {
-					$A = $reconcile[0];
-					$Adata = get_key_value(get_user_dir($A) . "/$split.nanni", $sentId);
-					$Aparts = explode("\t", $Adata);
-					$Atstamp = intval($Aparts[1]);
+					if (in_array('^', array_slice($reconcile, 1)))
+						die("'^' must be first reconcile argument");
+					if ($reconcile[0]=='^') {	// find user with most recent annotation for this sentence
+						$Atstamp = -1;
+						foreach (get_key_values(get_user_dir('*') . "/$split.nanni", $sentId) as $data) {
+							$parts = explode("\t", $data);
+							$tstamp = intval($parts[1]);
+							if ($tstamp > $Atstamp) {	// this is the newest so far
+								$A = substr($parts[2], 1);	// @user --[strip @]--> user
+								$Adata = $data;
+								$Aparts = $parts;
+								$Atstamp = $tstamp;
+							}
+						}
+						$reconcile[0] = $A;	// record which user was newest
+					}
+					else {
+						$A = $reconcile[0];
+						$Adata = get_key_value(get_user_dir($A) . "/$split.nanni", $sentId);
+						$Aparts = explode("\t", $Adata);
+						$Atstamp = intval($Aparts[1]);
+					}
 					
 					$B = $reconcile[count($reconcile)-1];
 					$Bdata = get_key_value(get_user_dir($B) . "/$split.nanni", $sentId);
 					// possibly the same user as A, in which case that user's annotations will simply be imported
 					$Bparts = explode("\t", $Bdata);
 					$Btstamp = intval($Bparts[1]);
+					
+					$sentdata['reconciled'] = $reconcile;	// users whose annotations were actually used/reconciled
+					$sentdata['reconciledtime'] = array($Atstamp, $Btstamp);
 				}
 
 				if (!$new || $new==='^') {	// load user's current version of the sentence, if applicable
@@ -2008,6 +2032,12 @@ function doSubmit() {
 <div id="_<?= $sid ?>" class="item">
 <input type="hidden" name="sentid[]" value="<?= $sid ?>" />
 <input type="hidden" name="split[]" value="<?= $s['split'] ?>" />
+<input type="hidden" name="reconciled[<?= $I ?>][0]" value="<?= $s['reconciled'][0] ?>" />
+<input type="hidden" name="reconciledtime[<?= $I ?>][0]" value="<?= $s['reconciledtime'][0] ?>" />
+<? if (count($s['reconciled'])>1) { ?>
+<input type="hidden" name="reconciled[<?= $I ?>][1]" value="<?= $s['reconciled'][count($s['reconciled'])-1] ?>" />
+<input type="hidden" name="reconciledtime[<?= $I ?>][1]" value="<?= $s['reconciledtime'][count($s['reconciledtime'])-1] ?>" />
+<? } ?>
 <input type="hidden" name="initval[]" class="initval" value="<?= $s['initval'] ?>" />
 <input type="hidden" name="initnote[]" class="initnote" value="<?= $s['note'] ?>" />
 <input type="hidden" name="beforeVExpand[]" class="beforeVExpand" value="" />
