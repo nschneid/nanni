@@ -1501,7 +1501,7 @@ ChunkLabelAnnotator.prototype.identifyTargets = function() {
 			if (this.ann.target.value) {
 				var v = $.parseJSON(this.ann.target.value)[this.tokenOffset];
 				if (v) {
-					v = v.split('|');
+					v = v.split('|');	// if of the form word|LABEL, strip the first part
 					val = v[v.length-1];
 				}
 			}
@@ -1596,6 +1596,7 @@ ChunkLabelAnnotator.prototype.updateTargets = function(updateInfo) {
 			else {
 				$(a.target).prop("disabled","disabled").prop("required","");
 			}
+			if (theann.constructor.started) a.aparecium();
 		}
 		else {
 			// irrelevant given MWE analysis
