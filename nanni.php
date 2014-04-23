@@ -1596,7 +1596,7 @@ ChunkLabelAnnotator.prototype.updateTargets = function(updateInfo) {
 			else {
 				$(a.target).prop("disabled","disabled").prop("required","");
 			}
-			if (theann.constructor.started) a.aparecium();
+			if (theann.constructor.started && a.submittable) a.aparecium();
 		}
 		else {
 			// irrelevant given MWE analysis
