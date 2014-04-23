@@ -27,7 +27,8 @@ Currently the interface is configured for annotation of:
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 <link rel="stylesheet" href="jquery-ui_1.9.2.css" />
-<link rel="icon" type="image/png" href="img/edit_find_replace-icon.png" />
+<? $icontype = ($_SERVER['REMOTE_USER']=='nschneid@cs.cmu.edu') ? 'png' : 'gif'; ?>
+<link rel="icon" type="image/<?= $icontype ?>" href="img/cupcake-icon.<?= $icontype ?>" />
 <style type="text/css">
 body,tbody { font-family: "Helvetica Neue",helvetica,arial,sans-serif; }
 div.item { max-width: 40em; margin-left: auto; margin-right: auto; }
@@ -151,13 +152,46 @@ if ($iFrom>-1) {
 		//$note = htmlspecialchars_decode(stripslashes($note), ENT_QUOTES);
 		
 		for ($I=0; $I<count($_REQUEST['sentid']); $I++) {
+			$sentId = $_REQUEST['sentid'][$I];
 			$mwe = trim(preg_replace('/\s+/', ' ', $_REQUEST['mwe'][$I]));
 			$note = trim(preg_replace('/\s+/', ' ', $_REQUEST['note'][$I]));
 			$key = $_REQUEST['sentid'][$I];
 			$avals = '"initval": "' . addslashes(trim(preg_replace('/\s+/', ' ', $_REQUEST['initval'][$I]))) . '",';
 			if (array_key_exists('beforeVExpand', $_REQUEST))	// annotation prior to clicking the "versions" link
 				$avals .= '  "beforeVExpand": "' .  preg_replace('/\s+/', ' ', trim(addslashes($_REQUEST['beforeVExpand'][$I]))) . '",';
-			if (isset($_REQUEST['reconciled'])) {
+			if (isset($_REQUEST['reconciled'][$I])) {
+				if ($reconcile[0]=='^') {	
+					// most recent of the source versions being reconciled
+					$maxtstamp = -1;
+					foreach ($_REQUEST['reconciledtime'][$I] as $tstamp) {
+						if (intval($tstamp) > $maxtstamp)
+							$maxtstamp = intval($tstamp);
+					}
+					
+					// find user with most recent annotation for this sentence
+					$Atstamp = -1;
+					foreach (get_key_values(get_user_dir('*') . "/$split.nanni", $sentId) as $data) {
+						$parts = explode("\t", $data);
+						$tstamp = intval($parts[1]);
+						if ($tstamp > $Atstamp) {	// this is the newest so far
+							$A = substr($parts[2], 1);	// @user --[strip @]--> user
+							$Atstamp = $tstamp;
+						}
+					}
+					if ($Atstamp > $maxtstamp) {
+						die("EDIT CONFLICT: There is a new annotation for this sentence ($sentId) from user $A. Go back, hit refresh, and make sure your annotation takes theirs into account.");
+					}
+				}
+				if (true) {	// also ensure that for each user being reconciled, they have not submitted a more recent version
+					foreach ($_REQUEST['reconciled'][$I] as $k=>$A) {
+						$Adata = get_key_value(get_user_dir($A) . "/$split.nanni", $sentId);
+						$Aparts = explode("\t", $Adata);
+						$Atstamp = intval($Aparts[1]);
+						if ($Atstamp > intval($_REQUEST['reconciledtime'][$I][$k])) {
+							die("EDIT CONFLICT: There is a new annotation for this sentence ($sentId) from user $A. Go back, hit refresh, and make sure your annotation takes theirs into account.");
+						}
+					}
+				}
 				$avals .= '  "reconciled": {"users": ' . json_encode($_REQUEST['reconciled'][$I]) . ', "times": ' . json_encode(array_map(intval, $_REQUEST['reconciledtime'][$I])) . '},';
 			}
 			if (isset($query))
@@ -282,6 +316,10 @@ if ($iFrom>-1) {
 									$sentdata['chklbls'] = htmlspecialchars(json_encode($sentJ['chklbls']), ENT_QUOTES);
 									if (!array_key_exists('initialStage', $_REQUEST)) // unless a particular start stage is forced, make it '1' because there are already chunk labels
 										$init_stage = '1';
+								}
+								if ($reconcile===null) {
+									$sentdata['reconciled'] = array(0=>$u);
+									$sentdata['reconciledtime'] = array(0=>$tstamp);
 								}
 							}
 						}
