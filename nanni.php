@@ -1588,7 +1588,14 @@ ChunkLabelAnnotator.prototype.updateTargets = function(updateInfo) {
 		else if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, function (word, pos) { return true; })) {
 			// would begin a chunk but fails POS filter
 			a.submittable = (a.target.value!=="");	// so previous values will be saved when annotating other POSes
-			$(a.target).prop("disabled","disabled").prop("required","");
+			if (a.initval.indexOf("#")>-1) {	// enable due to a reconciliation conflict
+				$(a.target).prop("disabled","").prop("required","required");
+				a.populateLabels(ALL_LABEL_SHORTCUTS);	// TODO: this is sort of a hack--ideally we'd still filter possible labels by POS
+				a.validate();
+			}
+			else {
+				$(a.target).prop("disabled","disabled").prop("required","");
+			}
 		}
 		else {
 			// irrelevant given MWE analysis
