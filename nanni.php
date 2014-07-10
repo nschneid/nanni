@@ -690,13 +690,15 @@ MWEAnnotator.prototype.isGrouped = function(tknOffset, strength) {
 /* poses (optional): list of POSes for the sentence; 
 filterFxn (optional): function that must be true for some (word, POS) pair in the chunk 
 for the chunk to be included 
-firstOnly (optional): if true, return false unless filterFxn matches the first token in the chunk
+firstOnlyPlusWhitelist (optional): if an array, return false unless the first token in the chunk 
+is matched by filterFxn OR (when lowercased) by one of the words in the array. 
+In either case, filterFxn must return true for some word in the chunk.
 */
-MWEAnnotator.prototype.isChunkBeginner = function(tknOffset, strength, poses, filterFxn, firstOnly) {
+MWEAnnotator.prototype.isChunkBeginner = function(tknOffset, strength, poses, filterFxn, firstOnlyPlusWhitelist) {
 	if (arguments.length<2) strength = 'both';
 	if (arguments.length<3) poses = null;
 	if (arguments.length<4) filterFxn = function (word, pos) { return true; };
-	if (arguments.length<5) firstOnly = false;
+	if (arguments.length<5) firstOnlyPlusWhitelist = false;
 	var $thisitem = $(this.item);
 	var getTok = function (toffset) {
 		return $thisitem.find('.sent .w[data-w='+toffset+']');
@@ -726,8 +728,8 @@ MWEAnnotator.prototype.isChunkBeginner = function(tknOffset, strength, poses, fi
 				return (poses===null || filterFxn(getTok($(this).data("w")).text(), poses[$(this).data("w")]));
 			}).length>0);
 	}
-	if (firstOnly)
-		return (sb || wb) && (poses===null || filterFxn(w, poses[tknOffset]));
+	if (firstOnlyPlusWhitelist)	// note that an empty array is truthy in Javascript
+		return (sb || wb) && (poses===null || filterFxn(w, poses[tknOffset]) || firstOnlyPlusWhitelist.indexOf(w.toLowerCase())>-1);
 	return (sb || wb);
 }
 MWEAnnotator.prototype.nextInChunk = function(tknOffset, strength) {
@@ -1013,6 +1015,21 @@ PREPS_MASTER = ["2", "4", "a", "abaft", "aboard", "about", "above", "abreast", "
 	"up to", "upward of", "upwards of", "vis a vis", "vis à vis", "vis - a - vis", "vis - à - vis", 
 	"with reference to", "with regard to", "with respect to", "with the exception of", 
 	"within sight of"];
+PREP_SPECIAL_MW_BEGINNERS = ["a", "according", "all", "bare", "because", "but", "care", "complete", 
+"contrary", "courtesy", "depending", "due", "exclusive", "having", "inclusive", "instead", 
+"irrespective", "little", "more", "next", "nothing", "other", "outboard", "owing", 
+"preparatory", "previous", "prior", "pursuant", "regardless", "relative", "short", 
+"subsequent", "thanks", "this"];
+/* // Do not contain any single-word prepositions, therefore will not be matched:
+a la
+à la
+give or take
+vis a vis
+vis à vis
+vis - a - vis
+vis - à - vis
+*/
+
 SRIKUMAR_LABELS = ['Activity','Age','Agent','Attribute','Beneficiary','Cause','ClockTimeCxn','Co-Particiants','DeicticTime','Destination','Direction',
 				   'Duration','EndState','EndTime','Experiencer','Frequency','Instrument','Location','Manner','MediumOfCommunication','Numeric',
 				   'ObjectOfVerb','Opponent/Contrast','Other','PartWhole','Participant/Accompanier','PhysicalSupport',
@@ -1569,7 +1586,7 @@ ChunkLabelAnnotator.prototype.updateTargets = function(updateInfo) {
 		this.deserialize(false);	// look up this actor's value from overall annotator value (may have changed in the versions browser)
 		
 		// update defaults to reflect the current MWE analysis
-		if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, theann.filterFxn, theann.filterFxn==ChunkLabelAnnotator.prototype.P_FILTER)) {
+		if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, theann.filterFxn, (theann.filterFxn==ChunkLabelAnnotator.prototype.P_FILTER) ? PREP_SPECIAL_MW_BEGINNERS : false)) {
 			$(a.target).prop("disabled","").prop("required","required");
 			a.submittable = true;
 			if (theann.filterFxn==ChunkLabelAnnotator.prototype.V_FILTER) {
