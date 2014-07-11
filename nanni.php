@@ -1113,7 +1113,7 @@ SRIKUMAR_LABEL_DESCRIPTIONS = {"PhysicalSupport": "The object of the preposition
  "Topic": "The object of the preposition denotes the subject or topic under consideration. In many cases, the preposition can be replaced by the phrase 'on the subject of'. The governor of the preposition can be a verb or nominalization that implies an action or analysis or a noun that indicates an information store. \"thinking about you\", \"book on careers\", \"debate over unemployment\"",
  "Manner": "The prepositional phrase indicates the manner in which an action is performed. The action is typically the governor of the preposition. \"frame the definition along those lines\", \"disappear in a flash\", \"shout with pleasure\"",
  "Species": "This expresses the relationship between a general category or type and the thing being specified which belongs to the category. The governor is a noun indicating the general category and the object is an instance of that category. \"the city of Prague\", \"this type of book\"",
- "Location": "The object of the preposition indicates the means or the instrument for performing an action that is typically the governor. \"look about the room\", \"she stood before her\", \"sat beside her\"",
+ "Location": "The prepositional phrase indicates a locative meaning. This relation includes both physical and figurative aspects of location. \"live at Conway house\", \"left it in the cupboard\", \"left it in her will\", \"bruises above both eyes\"",
  '`': '`: No semantic function; purely collocational or syntactic',
  '`i': "Infinitival TO (with no additional semantics)",
  '?': 'Unsure. You may be more specific by listing one or more predefined category names (separated by commas), followed by "?".'};
