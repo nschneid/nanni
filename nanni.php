@@ -983,7 +983,7 @@ PREPS_MASTER = ["2", "4", "a", "abaft", "aboard", "about", "above", "abreast", "
 	"underfoot", "underground", "underneath", "unlike", "until", "unto", "up", "uphill", "upon", 
 	"upside", "upstage", "upstairs", "upstream", "upward", "upwards", "upwind", "v.", "versus", 
 	"via", "vice", "vis-a-vis", "vis-à-vis", "vs.", "w/", "w/i", "w/in", "w/o", "westward", 
-	"westwards", "while", "with", "withal", "within", "without", "worth", 
+	"westwards", "with", "withal", "within", "without", 
 	"a cut above", "a la", "à la", "according to", "after the fashion of", "ahead of", "all for", 
 	"all over", "along with", "apart from", "as far as", "as for", "as from", "as of", "as regards", 
 	"as to", "as well as", "aside from", "at a range of", "at the hand of", "at the hands of", 
@@ -1029,6 +1029,301 @@ vis à vis
 vis - a - vis
 vis - à - vis
 */
+
+PSST_LIST_OF_LABELS = ['1DTrajectory', '2DArea', '3DMedium', 'Accompanier', 'Activity',
+    'Age', 'Agent', 'Approximator', 'Attribute', 'Beneficiary',
+    'Cause', 'ClockTimeCxn', 'Co-Agent', 'Co-Patient', 'Co-Theme',
+    'Comparison/Contrast', 'Contour', 'Course', 'DeicticTime',
+    'Destination', 'Direction', 'Duration', 'EndState', 'EndTime',
+    'Example/Subset', 'Experiencer', 'Extent', 'Frequency',
+    'Function', 'Goal', 'InitialLocation', 'Instrument', 'Location',
+    'Locus', 'Manner', 'Material', 'Means', 'Other', 'PartWhole',
+    'Patient', 'Possessor', 'ProfessionalAspect', 'Purpose',
+    'Recipient', 'RelativeTime', 'Scalar/Rank', 'Source', 'Speaker',
+    'Species', 'StartState', 'StartTime', 'State', 'Stimulus',
+    'Temporal', 'Theme', 'Time', 'Topic', 'Transit', 'Value',
+    'ValueComparison', 'Via', '`', '`i', '?'];
+
+PSST_LABELS = {"about": {"1DTrajectory": [18, "They skipped about my feet, a flock of lambs", "rotated 90 degrees clockwise about its lowest corner", "wrapped an arm about Emilia's shoulders"], 
+    "2DArea": [90, "She wore her dark hair in plaits about her head.", "she looked about the room."], 
+    "Approximator": [0, "It will take about an hour."], 
+    "Location": [1, "rugs were strewn about the hall", "he produced a knife from somewhere about his person."], 
+    "Possessor": [6, "there was a look about her that said everything."], 
+    "Topic": [967, "I was thinking about you", "a book about ancient Greece", "it's all about having fun.", "there's nothing we can do about it."]},
+"above": {"1DTrajectory": [3, "a cable runs above the duct."], 
+    "Location": [54, "from his flat above the corner shop", "bruises above both eyes.", "a display of fireworks above the town", "in the hills above the capital", "on the wall above the altar.", "she held her arms above her head."], 
+    "Scalar/Rank": [17, "the firm cynically chose profit above car safety.", "the food was well above average", "she married above her.", "at a level above the common people.", "he seldom spoke above a whisper", "the doorbell went unheard above the din."], 
+    "ValueComparison": [8, "above sea level."]},
+"across": {"1DTrajectory": [452, "I ran across the street", "travelling across Europe", "he had swum across."], 
+    "Duration": [1]},
+"after": {"Cause": [19, "Both were crestfallen after Stevie's erratic performance", "The sergeant thought Blanche would be tired after the tension of the previous hour or two"], 
+    "ClockTimeCxn": [0, "I strolled in about ten minutes after two."], 
+    "Comparison/Contrast": [7, "a drawing after Millet's The Reapers.", "they named her Pauline, after Barbara's mother."], 
+    "Direction": [9, "she stared after him."], 
+    "Frequency": [0, "day after day we kept studying."], 
+    "RelativeTime": [60, "shortly after Christmas", "after a while he returned", "he'd gone out with his secretary for an after-work drink."], 
+    "Scalar/Rank": [0, "in their order of priorities health comes after housing."]},
+"against": {"Beneficiary": [21, "the first victim gave evidence against him."], 
+    "Co-Agent": [14, "the championship match against Somerset."], 
+    "Comparison/Contrast": [0, "the benefits must be weighed against the costs."], 
+    "Destination": [124, "frustration made him bang his head against the wall."], 
+    "Location": [124, "she stood with her back against the door"]},
+"along": {"1DTrajectory": [535, "cars were parked along the grass verge", "the path along the cliff.", "soon we were driving along a narrow road", "he saw Gray run along the top of the wall", "we continued to plod along."]},
+"among": {"Accompanier": [56, "flowers hidden among the roots of the trees", "you're among friends."], 
+    "PartWhole": [35, "a British woman was among the 54 victims of the disaster", "snakes are among the animals most feared by man."]},
+"around": {"1DTrajectory": [161, "he put his arm around her.", "They zigzagged around tree trunks", "Lily peeped around the open curtain", "he walked around the airfield", "it can drill around corners."], 
+    "2DArea": [235, "cycling around the village", "a number of large depots around the country."], 
+    "Approximator": [0, "It will take around an hour."], 
+    "Location": [106, "the palazzo is built around a courtyard", "the hills around the city.", "He must have parked around the front of the motel"], 
+    "Topic": [3, "our entire culture is built around those loyalties."]},
+"as": {"Attribute": [257, "it came as a shock", "she got a job as a cook."]},
+"at": {"Activity": [42, "boxing was the only sport I was any good at", "she was getting much better at hiding her reactions."], 
+    "Age": [1, "at fourteen he began to work as a postman."], 
+    "Destination": [445, "they stopped at a small trattoria."], 
+    "Direction": [41, "she clutched at the thin gown", "he hit at her face with the gun."], 
+    "Frequency": [44, "driving at 50 mph."], 
+    "Goal": [278, "I looked at my watch", "Leslie pointed at him", "policies aimed at reducing taxation."], 
+    "Instrument": [19, "holding a prison officer at knifepoint", "her pride had taken a beating at his hands."], 
+    "Location": [445, "they live at Conway House"], 
+    "Locus": [0, "You can find testimonials at my website."], 
+    "ProfessionalAspect": [0, "it was at university that he first began to perform."], 
+    "Stimulus": [183, "shaking their heads at her foolishness", "admiration at her own acumen"], 
+    "Time": [43, "the sea is cooler at night.", "the children go to bed at nine o'clock", "his death came at a time when the movement was split."], 
+    "Value": [44, "prices start at \u00a318,500", "chanting at full volume"]},
+"before": {"Location": [22, "Matilda stood before her, panting", "trotting through the city with guards running before and behind."], 
+    "Other": [9, "he could be taken before a magistrate for punishment."], 
+    "RelativeTime": [36, "she had to rest before dinner", "the day before yesterday", "they lived rough for four days before they were arrested", "his playing days had ended six years before", "it's never happened to me before."], 
+    "Scalar/Rank": [0, "a woman who placed duty before all else", "they would die before they would cooperate with each other."]},
+"behind": {"Cause": [0, "the agony behind his decision to retire."], 
+    "Location": [182, "we were stuck behind a slow-moving tractor.", "the recording machinery was kept behind screens", "the sun came out from behind a cloud."], 
+    "Scalar/Rank": [0, "Woosnam moved to ten under par, five shots behind Fred Couples.", "the government admitted it is ten years behind the West in PC technology."]},
+"beneath": {"Location": [83, "the ancient city has lain hidden beneath the sea for 2,000 years.", "beneath this floor there's a cellar", "her eyes had dark shadows beneath them.", "the labyrinths beneath central Moscow."], 
+    "Scalar/Rank": [0, "he was relegated to the rank beneath theirs.", "she's in love with a man who is rather beneath her."]},
+"beside": {"Comparison/Contrast": [0, "beside Paula she always felt clumsy."], 
+    "Location": [91, "he sat beside me in the front seat", "the table beside the bed."]},
+"between": {"1DTrajectory": [129, "the dog crawled between us and lay down at our feet", "those who travel by train between London and Paris."], 
+    "Approximator": [7, "a man aged between 18 and 30", "between 25 and 40 per cent off children's clothes."], 
+    "Co-Agent": [148, "negotiations between Russia, Ukraine, and Romania.", "the wars between Russia and Poland."], 
+    "Co-Patient": [148, "a collision in mid-air between two light aircraft"], 
+    "Co-Theme": [148, "links between science and industry"], 
+    "Comparison/Contrast": [9, "the difference between income and expenditure."], 
+    "Location": [129, "the border between Mexico and the United States"], 
+    "RelativeTime": [1, "they snack between meals", "the long, cold nights between autumn and spring."]},
+"by": {"1DTrajectory": [0, "I drove by our house."], 
+    "Agent": [406, "the door was opened by my cousin Annie", "a clear decision by the electorate", "years of hard fund-raising work by local people."], 
+    "Attribute": [20, "a breakdown of employment figures by age and occupation."], 
+    "Beneficiary": [0, "she had done her duty by him."], 
+    "Cause": [98, "damage caused by fire."], 
+    "Co-Agent": [0, "Richard is his son by his third wife."], 
+    "Course": [37, "travelling by road to Aylsham."], 
+    "Extent": [69, "the shot missed her by miles", "the raising of VAT by 2.5%."], 
+    "Frequency": [0, "colours changing minute by minute", "the risk becomes worse by the day."], 
+    "Function": [2, "what is meant by \"fair\"?"], 
+    "Location": [40, "remains were discovered by the roadside", "the pram was by the dresser."], 
+    "Manner": [0, "I heard by chance that she has married again", "Anderson, by contrast, rejects this view", "she ate by candlelight.", "it was the least he could do, by God", "I swear by Almighty God."], 
+    "Means": [127, "malaria can be controlled by attacking the parasite", "they substantiate their opinions by the use of precise textual reference", "they plan to provide further working capital by means of borrowing."], 
+    "RelativeTime": [1, "I've got to do this report by Monday", "by now Kelly needed extensive physiotherapy."], 
+    "Speaker": [53, "a book by Ernest Hemingway.", "anything you do is all right by me"], 
+    "Temporal": [1, "this animal always hunts by night."], 
+    "Transit": [37, "the cost of travelling by bus"], 
+    "Value": [0, "billing is by the minute", "the drunken yobbos who turned up by the cartload.", "a map measuring 400 by 600 mm", "she multiplied it by 89."]},
+"down": {"1DTrajectory": [466, "up and down the stairs", "tears streaming down her face.", "I wandered down the road."], 
+    "Destination": [0, "she was tired of going down the pub every night."], 
+    "Duration": [0, "astrologers down the ages."], 
+    "Location": [254, "I often see him down the pub", "(he lives) a dozen miles or so down the Thames.", "he lived down the street"]},
+"during": {"Duration": [120, "the restaurant is open during the day", "the period during which he grew to adulthood.", "the stabbing took place during a row at a party."]},
+"for": {"Beneficiary": [133, "I got a present for you", "these parents aren't speaking for everyone."], 
+    "Co-Theme": [0, "swap these two bottles for that one."], 
+    "DeicticTime": [65, "I haven't seen him for some time."], 
+    "Destination": [8, "they are leaving for London tomorrow."], 
+    "Duration": [65, "he was jailed for 12 years"], 
+    "Extent": [0, "he crawled for 300 yards."], 
+    "Frequency": [0, "the camcorder failed for the third time."], 
+    "Function": [395, "the \"F\" is for Fascinating.", "networks for the exchange of information"], 
+    "ProfessionalAspect": [28, "she is a tutor for the Open University."], 
+    "Purpose": [381, "the necessary tools for making a picture frame."], 
+    "Scalar/Rank": [37, "she was tall for her age", "warm weather for the time of year."], 
+    "Stimulus": [385, "Aileen is proud of her family for their support", "I could dance and sing for joy."], 
+    "Value": [23, "copies are available for \u00a31.20."]},
+"from": {"Activity": [11, "the story of how he was saved from death."], 
+    "Cause": [71, "a child suffering from asthma."], 
+    "Co-Theme": [351, "estranged from their families"], 
+    "Comparison/Contrast": [23, "these fees are quite distinct from expenses."], 
+    "InitialLocation": [842, "she began to walk away from him", "I leapt from my bed", "he was turning the Chamberlain government away from appeasement.", "split a bough from a tree", "such foods should be totally eliminated from a healthy eating plan"], 
+    "Location": [37, "the ambush occurred 50 metres from a checkpoint.", "you can see the island from here", "the ability to see things from another's point of view."], 
+    "Material": [16, "a paint made from a natural resin."], 
+    "Source": [606, "information obtained from papers, books, and presentations.", "I'm from Hackney", "she rang him from the hotel", "she demanded the keys from her husband.", "men who ranged in age from seventeen to eighty-four."], 
+    "Speaker": [125, "an admission from the defendant", "the comment from Bertrand Russell"], 
+    "StartState": [387, "Pat is recovering from scarlet fever.", "A tug at his trouser leg awakened him from his reverie", "the party was ousted from power after sixteen years.", "escape from poverty", "take land from indigenous people", "East German departure from the Warsaw Pact"], 
+    "StartTime": [12, "the show will run from 10 a.m. to 2 p.m.", "a document dating from the thirteenth century."]},
+"in": {"Age": [142, "a woman in her thirties."], 
+    "Attribute": [286, "Mozart's Piano Concerto in E flat.", "a fairly new satin blouse in kingfisher-blue", "a chestnut-brown sweater in fine wool", "no discernible difference in quality.", "say it in French", "put it in writing."], 
+    "Contour": [124, "If at any point they lose the scent they fly in zig-zags", "Planets move in ellipses around the sun", "shaking his thumb in the direction of the sleeping animals"], 
+    "DeicticTime": [100, "I hadn't seen him in years.", "I'll see you in fifteen minutes."], 
+    "Destination": [251, "don't put coal in the bath", "he got in his car and drove off."], 
+    "Location": [768, "I'm living in London", "she saw the bus in the rear-view mirror."], 
+    "Locus": [331, "I read it in a book", "acting in a film."], 
+    "Manner": [892, "dressed in their Sunday best", "cruel in the extreme", "he frowned in what he hoped was a manly, intent manner", "He smiled in a benevolent sort of way"], 
+    "ProfessionalAspect": [28, "she works in publishing."], 
+    "State": [175, "to be in love", "I've got to put my affairs in order", "Trouserless men looked absurd in socks."], 
+    "Time": [98, "they met in 1885", "at one o'clock in the morning"], 
+    "Value": [0, "a local income tax running at six pence in the pound."]},
+"inside": {"DeicticTime": [0, "the oven will have paid for itself inside 18 months."], 
+    "Destination": [47, "Anatoly reached inside his shirt and brought out a map", "we walked inside."], 
+    "Location": [39, "he went inside Graves and scored near the post.", "a radio was playing inside the flat", "Mr Jackson is waiting for you inside."]},
+"into": {"Activity": [0, "he's into surfing and jet-skiing."], 
+    "Destination": [896, "the narrow road which led down into the village.", "cover the bowl and put it into the fridge", "Sara got into her car and shut the door.", "he crashed into a parked car."], 
+    "Direction": [35, "with the wind blowing into your face", "sobbing into her skirt."], 
+    "Duration": [3, "shopping goes on into the evening"], 
+    "EndState": [137, "they forced the club into a humiliating special general meeting.", "a peaceful protest which turned into a violent confrontation", "the fruit can be made into jam."], 
+    "Topic": [10, "a clearer insight into what is involved", "an inquiry into the squad's practices."], 
+    "Value": [0, "three into twelve goes four."]},
+"like": {"Comparison/Contrast": [366, "he was screaming like a banshee.", "he used to have a car like mine", "they were like brothers", "she looked nothing like Audrey Hepburn.", "students were angry at being treated like children."], 
+    "Example/Subset": [2, "the cautionary vision of works like Animal Farm and 1984."]},
+"of": {"Age": [6, "a boy of 15."], 
+    "Attribute": [29, "A faint frown of doubt brought Lucenzo 's brows together .", "He is a gentleman of complete integrity"], 
+    "Cause": [67, "he died of cancer."], 
+    "ClockTimeCxn": [0, "it would be just a quarter of three in New York."], 
+    "Location": [0, "north of Watford."], 
+    "Material": [86, "the house was built of bricks", "walls of stone."], 
+    "PartWhole": [1413, "a bag of popcorn", "nine of the children came to the show", "a series of programmes", "a piece of cake.", "the sleeve of his coat", "in the back of the car", "the days of the week."], 
+    "Possessor": [935, "it was kind of you to ask", "the son of a friend", "the government of India", "a former colleague of John's.", "The smug foolishness of the Western leaders was typified by the British participants."], 
+    "Speaker": [18, "the plays of Shakespeare", "the paintings of Rembrandt."], 
+    "Species": [559, "the city of Prague", "the idea of a just society", "the population of interbreeding individuals", "this type of book."], 
+    "Topic": [969, "I am certain of that.", "a photograph of the bride", "I don't know of anything that would be suitable.", "Hobbes conceived of what he called a state of nature.", "All three were convinced of his innocence."]},
+"off": {"Direction": [176, "rinse off detergent/rinse detergent off (intr. particle)"], 
+    "InitialLocation": [218, "he rolled off the bed", "the coat slipped off his arms", "trying to get us off the stage.", "threatening to tear the door off its hinges", "it's a huge burden off my shoulders.", "pluck him off the mountain"], 
+    "Location": [19, "anchoring off Blue Bay", "six miles off Dunkirk.", "single wires leading off the main lines", "in a little street off Whitehall."], 
+    "Source": [176, "they knocked $2,000 off the price"], 
+    "State": [0, "I took a couple of days off work.", "he managed to stay off alcohol."]},
+"on": {"Activity": [3, "his attendant was out on errands."], 
+    "Beneficiary": [49, "But is this fair on clients who are vulnerable and in need?", "it would be all too convenient to blame everything on the absent Miss Philimore", "the courts have been too lenient on Dr Courtney"], 
+    "Destination": [200, "we got on the train.", "put it on the table.", "put your ideas down on paper"], 
+    "Goal": [86, "five air raids on Schweinfurt", "thousands marching on Washington", "her eyes were fixed on his dark profile."], 
+    "Location": [365, "a scratch on her arm", "a smile on her face.", "an internment camp on the island", "the house on the corner.", "on the table was a water jug", "she was lying on the floor", "a sign on the front gate.", "John got some sleep on the plane."], 
+    "Locus": [16, "stored on the client's own computer."], 
+    "Possessor": [1, "she only had a few pounds on her."], 
+    "ProfessionalAspect": [0, "they would be allowed to serve on committees."], 
+    "State": [61, "he is on morphine to relieve the pain.", "he was on his way to see his mother.", "he was lying on his back."], 
+    "Time": [48, "she was booed on arriving home.", "reported on September 26", "on a very hot evening in July."], 
+    "Topic": [362, "a book on careers.", "a constitution modelled on America's."], 
+    "Via": [10, "a new twelve-part TV series on Channel 4."]},
+"onto": {"Destination": [175, "an onto mapping.", "a small strip of tape designed to stick firmly onto skin"]},
+"over": {"1DTrajectory": [42, "he toppled over the side of the boat.", "she trudged over the lawn."], 
+    "Approximator": [0, "over 40 degrees C", "they've been married for over a year."], 
+    "Destination": [2, "They broke a chair over me ."], 
+    "Duration": [4, "you've given us a lot of heartache over the years", "she told me over coffee."], 
+    "Location": [115, "I saw flames over Berlin", "cook the sauce over a moderate heat.", "over the hill is a small village.", "his flat was over the shop.", "an oxygen tent over the bed", "ladle this sauce over fresh pasta.", "views over Hyde Park."], 
+    "Patient": [24, "editorial control over what is included."], 
+    "Scalar/Rank": [1, "the predominance of Asian over African managers in the sample.", "he shouted over the noise of the taxis.", "over him is the financial director.", "I'd choose the well-known brand over that one."], 
+    "Topic": [110, "a heated debate over unemployment."], 
+    "Via": [0, "a voice came over the loudspeaker."]},
+"round": {"1DTrajectory": [154, "he wrapped the blanket round him", "she drew a red circle round his name.", "a bus appeared round the corner.", "Angus put an arm round Flora and kissed her.", "The car swung round a corner into the dusty main road", "I stepped round him and went back to the house"], 
+    "2DArea": [90, "she went round the house and saw that all the windows were barred."], 
+    "Destination": [0, "if he didn't shut up he might get a clip round the ear."], 
+    "Location": [131, "camel drivers squatting round their early morning fires", "the area round the school", "with shifting sands all round me.", "Steven parked the car round the corner."], 
+    "Topic": [4, "the text is built round real practical examples."]},
+"through": {"1DTrajectory": [368, "the lorry smashed through a brick wall", "a cucumber, slit, but not right through.", "the sun was streaming in through the window", "the glass in the front door where the moonlight streamed through.", "stepping boldly through the doorway", "as soon as we opened the gate they came streaming through.", "flipping through the pages of a notebook", "she read the letter through carefully.", "he'd hooked his umbrella through the handles of the handbag and pulled it out"], 
+    "3DMedium": [210, "The sap flowed easily through her veins .", "making my way through the guests."], 
+    "Course": [15, "Westbourne estimated the chances of escape through the kitchen."], 
+    "Destination": [6, "Josh tucked his arm companionably through hers"], 
+    "Duration": [9, "the goal came midway through the second half", "to struggle through until pay day.", "we sat through some very boring speeches", "she's been through a bad time", "Karl will see you through, Ingrid."], 
+    "EndTime": [0, "they will be in London from March 24 through May 7."], 
+    "Extent": [3, "each joint can move through an angle within fixed limits.", "rotate them through 90 degrees"], 
+    "Location": [11, "the approach to the church is through a gate."], 
+    "Means": [12, "dioxins get into mothers' milk through contaminated food."], 
+    "Via": [14, "seeking justice through the proper channels."]},
+"to": {"Beneficiary": [703, "you were terribly unkind to her", "they donated \u00a3400 to the hospice.", "priced to be affordable to domestic users", "She was rude to Larry Hagman"], 
+    "ClockTimeCxn": [0, "it's five to ten."], 
+    "Co-Theme": [148, "he is married to his cousin Emma", "he had left his dog tied to a drainpipe", "they are inextricably linked to this island."], 
+    "Comparison/Contrast": [0, "the club's nothing to what it once was."], 
+    "Destination": [595, "place the cursor to the left of the first word.", "walking down to the shops", "my first visit to Africa."], 
+    "EndState": [160, "Christopher's expression changed from amazement to joy", "she was close to tears.", "smashed to smithereens.", "a drop in profits from \u00a3105 m to around \u00a375 m", "to her astonishment, he smiled."], 
+    "EndTime": [0, "from 1938 to 1945."], 
+    "Experiencer": [132, "speed altogether surprising to Miss Buckley"], 
+    "Function": [0, "a shoulder to cry on"], 
+    "Location": [8, "(He lives) forty miles to the south of the site"], 
+    "ProfessionalAspect": [41, "he's economic adviser to the president."], 
+    "Purpose": [0, "He rose to make a speech"], 
+    "Recipient": [571, "John told the news to Mary"], 
+    "Theme": [112, "a threat to world peace", "a reference to Psalm 22:18."], 
+    "Value": [0, "my car only does ten miles to the gallon.", "ten to the minus thirty-three."]},
+"towards": {"Beneficiary": [14, "he was warm and tender towards her"], 
+    "Direction": [276, "they drove towards the German frontier."], 
+    "Function": [0, "the council provided a grant towards the cost of new buses."], 
+    "Goal": [2, "moves towards EU political and monetary union."], 
+    "RelativeTime": [0, "towards the end of April."], 
+    "Topic": [14, "our attitude towards death."]},
+"with": {"3DMedium": [0, "marine mammals generally swim with the current."], 
+    "Accompanier": [274, "a nice steak with a bottle of red wine."], 
+    "Attribute": [112, "he's in bed with the flu.", "a small man with thick glasses.", "a flower-sprigged blouse with a white collar."], 
+    "Cause": [16, "wisdom comes with age."], 
+    "Co-Agent": [124, "a row broke out with another man."], 
+    "Instrument": [261, "cut the fish with a knife", "treatment with acid before analysis."], 
+    "Manner": [73, "the people shouted with pleasure."], 
+    "ProfessionalAspect": [11, "I bank with the TSB.", "she's with the Inland Revenue now."], 
+    "Stimulus": [432, "my father will be angry with me.", "he was trembling with fear."], 
+    "Theme": [431, "fill the bowl with water."], 
+    "Topic": [17, "Irina had been brisk when she called with the news and told him to telephone Rakovsky at his hotel ."]}};
+
+function buildTooltipStrings() {
+	result = {};
+	Object.keys(PSST_LABELS).forEach(function (p) {
+		Object.keys(PSST_LABELS[p]).forEach(function (sst) {
+			if (result[sst]===undefined) {
+				result[sst] = {};
+			}
+			var examplesL = PSST_LABELS[p][sst].slice(1);
+			for (var i=0; i<examplesL.length; i++) {	// for each example, capitalize the target preposition
+				// (heuristically identified as the last whitespace-separated matching word)
+				var e = ' '+examplesL[i]+' ';
+				var lastI = e.lastIndexOf(' '+p+' ');
+				if (lastI==-1)
+					lastI = e.lastIndexOf(p)-1;	// e.g., "after" in "an after-work drink"
+				examplesL[i] = e.slice(1,lastI+1) + p.toUpperCase() + e.slice(lastI+p.length+1, -1);
+			}
+			result[sst][p] = examplesL.join(' | ');
+		});
+	});
+	return result;
+}
+PSST_LEX_LABEL_DESCRIPTIONS = buildTooltipStrings();
+
+PSST_TOP_LABELS =  {"about": ["Topic", "2DArea", "1DTrajectory", "Possessor", "Location", "Approximator"],
+    "above": ["Location", "Scalar/Rank", "ValueComparison", "1DTrajectory"],
+    "across": ["1DTrajectory", "Duration"],
+    "after": ["RelativeTime", "Cause", "Direction", "Comparison/Contrast", "Scalar/Rank", "Frequency", "ClockTimeCxn"],
+    "against": ["Location", "Destination", "Beneficiary", "Co-Agent", "Comparison/Contrast"],
+    "along": ["1DTrajectory"],
+    "among": ["Accompanier", "PartWhole"],
+    "around": ["2DArea", "1DTrajectory", "Location", "Topic", "Approximator"],
+    "as": ["Attribute"],
+    "at": ["Location", "Destination", "Goal", "Stimulus", "Value", "Frequency", "Time", "Activity", "Direction", "Instrument", "Age", "ProfessionalAspect", "Locus"],
+    "before": ["RelativeTime", "Location", "Other", "Scalar/Rank"],
+    "behind": ["Location", "Scalar/Rank", "Cause"],
+    "beneath": ["Location", "Scalar/Rank"],
+    "beside": ["Location", "Comparison/Contrast"],
+    "between": ["Co-Theme", "Co-Patient", "Co-Agent", "Location", "1DTrajectory", "Comparison/Contrast", "Approximator", "RelativeTime"],
+    "by": ["Agent", "Means", "Cause", "Extent", "Speaker", "Location", "Transit", "Course", "Attribute", "Function", "Temporal", "RelativeTime", "Value", "Manner", "Frequency", "Co-Agent", "Beneficiary", "1DTrajectory"],
+    "down": ["1DTrajectory", "Location", "Duration", "Destination"],
+    "during": ["Duration"],
+    "for": ["Function", "Stimulus", "Purpose", "Beneficiary", "Duration", "DeicticTime", "Scalar/Rank", "ProfessionalAspect", "Value", "Destination", "Frequency", "Extent", "Co-Theme"],
+    "from": ["InitialLocation", "Source", "StartState", "Co-Theme", "Speaker", "Cause", "Location", "Comparison/Contrast", "Material", "StartTime", "Activity"],
+    "in": ["Manner", "Location", "Locus", "Attribute", "Destination", "State", "Age", "Contour", "DeicticTime", "Time", "ProfessionalAspect", "Value"],
+    "inside": ["Destination", "Location", "DeicticTime"],
+    "into": ["Destination", "EndState", "Direction", "Topic", "Duration", "Value", "Activity"],
+    "like": ["Comparison/Contrast", "Example/Subset"],
+    "of": ["PartWhole", "Topic", "Possessor", "Species", "Material", "Cause", "Attribute", "Speaker", "Age", "Location", "ClockTimeCxn"],
+    "off": ["InitialLocation", "Source", "Direction", "Location", "State"],
+    "on": ["Location", "Topic", "Destination", "Goal", "State", "Beneficiary", "Time", "Locus", "Via", "Activity", "Possessor", "ProfessionalAspect"],
+    "onto": ["Destination"],
+    "over": ["Location", "Topic", "1DTrajectory", "Patient", "Duration", "Destination", "Scalar/Rank", "Via", "Approximator"],
+    "round": ["1DTrajectory", "Location", "2DArea", "Topic", "Destination"],
+    "through": ["1DTrajectory", "3DMedium", "Course", "Via", "Means", "Location", "Duration", "Destination", "Extent", "EndTime"],
+    "to": ["Beneficiary", "Destination", "Recipient", "EndState", "Co-Theme", "Experiencer", "Theme", "ProfessionalAspect", "Location", "Value", "Purpose", "Function", "EndTime", "Comparison/Contrast", "ClockTimeCxn"],
+    "towards": ["Direction", "Topic", "Beneficiary", "Goal", "RelativeTime", "Function"],
+    "with": ["Stimulus", "Theme", "Accompanier", "Instrument", "Co-Agent", "Attribute", "Manner", "Topic", "Cause", "ProfessionalAspect", "3DMedium"]};
+
 
 SRIKUMAR_LABELS = ['Activity','Age','Agent','Attribute','Beneficiary','Cause','ClockTimeCxn','Co-Particiants','DeicticTime','Destination','Direction',
 				   'Duration','EndState','EndTime','Experiencer','Frequency','Instrument','Location','Manner','MediumOfCommunication','Numeric',
@@ -1127,7 +1422,8 @@ function TokenLabelAnnotator(I, itemId) {
 		<? if ($vsst) { ?>V_LABEL_SHORTCUTS, <? } ?>
 		GENERAL_LABEL_SHORTCUTS);
 	<? if ($psst) { ?>
-	this.labels = SRIKUMAR_LABELS;
+	this.labels = PSST_LIST_OF_LABELS;
+	this.lexlabeldescriptions = PSST_LEX_LABEL_DESCRIPTIONS;
 	this.labeldescriptions = SRIKUMAR_LABEL_DESCRIPTIONS;
 	<? } else { ?>
 	this.labels = Object.keys(this.labelShortcuts); //['LOCATION', 'PERSON', 'TIME', 'GROUP', 'OTHER', '?', '`'];
@@ -1146,15 +1442,18 @@ function TokenLabelAnnotator(I, itemId) {
 TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 	var a = new Actor(this);
 	a.word = wordelt;
+	var w = $(a.word).text().toLowerCase();
+	a.url = 'http://www.ark.cs.cmu.edu/PrepWiki/index.php/Category:'+w;
+	
 	a.tokenOffset = wordOffset;
 	a.labels = this.labels;
 	a.toplabels = this.toplabels;
 	<? if ($psst) { ?>
-	var w = $(a.word).text().toLowerCase();
-	if (SRIKUMAR_TOP_LABELS[w])
-		a.toplabels = SRIKUMAR_TOP_LABELS[w];
+	if (PSST_TOP_LABELS[w])
+		a.toplabels = PSST_TOP_LABELS[w];
 	<? } ?>
 	a.labelShortcuts = this.labelShortcuts;
+	a.lexlabeldescriptions = this.lexlabeldescriptions;
 	a.labeldescriptions = this.labeldescriptions;
 	this.actors.push(a);
 	a.getValue = function () {
@@ -1205,7 +1504,11 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 		var $word = $(word);
 		var wordId = $(this.word).attr("id");
 		
-		
+		if (theactor.url!==undefined) {
+			$word.dblclick(function (evt, ui) {
+				window.open(theactor.url, '_blank');
+			});
+		}
 		
 		// http://api.jqueryui.com/autocomplete/
 		// TODO: depending on defaults/preannotations, set placeholder for preps belonging to an MWE
@@ -1232,7 +1535,10 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 			autoFocus: true, minLength: 0, html: true, 	// the html option uses an extension script
 			focus: function (evt, ui) {	// apply tooltip to focused menu item
 				var v = ui.item.value;
-				if (theactor.labeldescriptions && theactor.labeldescriptions[v]!==undefined)
+				var w = $word.text().trim().toLowerCase();
+				if (theactor.lexlabeldescriptions && theactor.lexlabeldescriptions[v][w]!==undefined)
+					$(evt.currentTarget).attr("title", theactor.lexlabeldescriptions[v][w]);
+				else if (theactor.labeldescriptions && theactor.labeldescriptions[v]!==undefined)
 					$(evt.currentTarget).attr("title", theactor.labeldescriptions[v]);
 				else
 					$(evt.currentTarget).attr("title", "");
@@ -1241,8 +1547,10 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 			change: function (evt, ui) {
 				// apply tooltip to input box to reflect selection
 				var v = theactor.getValue();
-				
-				if (theactor.labeldescriptions && theactor.labeldescriptions[v]!==undefined)
+				var w = $word.text().trim().toLowerCase();
+				if (theactor.lexlabeldescriptions && theactor.lexlabeldescriptions[v][w]!==undefined)
+					$(evt.currentTarget).attr("title", theactor.lexlabeldescriptions[v][w]);
+				else if (theactor.labeldescriptions && theactor.labeldescriptions[v]!==undefined)
 					$(this).attr("title", theactor.labeldescriptions[v]);
 				else if (v.trim()!="")	// tooltip in case text overflows the box (is clipped)
 					$(this).attr("title", v);
