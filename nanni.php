@@ -1055,7 +1055,9 @@ PSST_LABELS = {"about": {"1DTrajectory": [18, "They skipped about my feet, a flo
     "Scalar/Rank": [17, "the firm cynically chose profit above car safety.", "the food was well above average", "she married above her.", "at a level above the common people.", "he seldom spoke above a whisper", "the doorbell went unheard above the din."], 
     "ValueComparison": [8, "above sea level."]},
 "across": {"1DTrajectory": [452, "I ran across the street", "travelling across Europe", "he had swum across."], 
-    "Duration": [1]},
+    "Direction": [17, "he looked across at me", "halfway across, Jenny jumped."], 
+    "Duration": [1], 
+    "Location": [17, "they lived across the street from one another", "the bridge across the river"]},
 "after": {"Cause": [19, "Both were crestfallen after Stevie's erratic performance", "The sergeant thought Blanche would be tired after the tension of the previous hour or two"], 
     "ClockTimeCxn": [0, "I strolled in about ten minutes after two."], 
     "Comparison/Contrast": [7, "a drawing after Millet's The Reapers.", "they named her Pauline, after Barbara's mother."], 
@@ -1133,7 +1135,8 @@ PSST_LABELS = {"about": {"1DTrajectory": [18, "They skipped about my feet, a flo
     "Location": [254, "I often see him down the pub", "(he lives) a dozen miles or so down the Thames.", "he lived down the street"]},
 "during": {"Duration": [120, "the restaurant is open during the day", "the period during which he grew to adulthood.", "the stabbing took place during a row at a party."]},
 "for": {"Beneficiary": [133, "I got a present for you", "these parents aren't speaking for everyone."], 
-    "Co-Theme": [0, "swap these two bottles for that one."], 
+    "Cause": [385, "He criticized Bevin for lack of imagination", "Blackbeard seemed ready to murder us for a wallet with a few fivers in it", "grief for a friend killed by right-wing vigilantes", "Miss Parker said she thanked God for high cheek bones"], 
+    "Co-Theme": [17, "swap these two bottles for that one."], 
     "DeicticTime": [65, "I haven't seen him for some time."], 
     "Destination": [8, "they are leaving for London tomorrow."], 
     "Duration": [65, "he was jailed for 12 years"], 
@@ -1144,6 +1147,7 @@ PSST_LABELS = {"about": {"1DTrajectory": [18, "They skipped about my feet, a flo
     "Purpose": [381, "the necessary tools for making a picture frame."], 
     "Scalar/Rank": [37, "she was tall for her age", "warm weather for the time of year."], 
     "Stimulus": [385, "Aileen is proud of her family for their support", "I could dance and sing for joy."], 
+    "Theme": [17, "charge higher prices for goods bought by credit card"], 
     "Value": [23, "copies are available for \u00a31.20."]},
 "from": {"Activity": [11, "the story of how he was saved from death."], 
     "Cause": [71, "a child suffering from asthma."], 
@@ -1161,6 +1165,7 @@ PSST_LABELS = {"about": {"1DTrajectory": [18, "They skipped about my feet, a flo
     "Contour": [124, "If at any point they lose the scent they fly in zig-zags", "Planets move in ellipses around the sun", "shaking his thumb in the direction of the sleeping animals"], 
     "DeicticTime": [100, "I hadn't seen him in years.", "I'll see you in fifteen minutes."], 
     "Destination": [251, "don't put coal in the bath", "he got in his car and drove off."], 
+    "Duration": [0, "John was here in 45 minutes after I called"], 
     "Location": [768, "I'm living in London", "she saw the bus in the rear-view mirror."], 
     "Locus": [331, "I read it in a book", "acting in a film."], 
     "Manner": [892, "dressed in their Sunday best", "cruel in the extreme", "he frowned in what he hoped was a manly, intent manner", "He smiled in a benevolent sort of way"], 
@@ -1259,12 +1264,17 @@ PSST_LABELS = {"about": {"1DTrajectory": [18, "They skipped about my feet, a flo
     "Attribute": [112, "he's in bed with the flu.", "a small man with thick glasses.", "a flower-sprigged blouse with a white collar."], 
     "Cause": [16, "wisdom comes with age."], 
     "Co-Agent": [124, "a row broke out with another man."], 
+    "Co-Theme": [0, "replace the old tires with new ones", "they confused my order with someone else's"], 
     "Instrument": [261, "cut the fish with a knife", "treatment with acid before analysis."], 
     "Manner": [73, "the people shouted with pleasure."], 
     "ProfessionalAspect": [11, "I bank with the TSB.", "she's with the Inland Revenue now."], 
     "Stimulus": [432, "my father will be angry with me.", "he was trembling with fear."], 
     "Theme": [431, "fill the bowl with water."], 
     "Topic": [17, "Irina had been brisk when she called with the news and told him to telephone Rakovsky at his hotel ."]}};
+
+// normalization
+PSST_LABELS["2"] = PSST_LABELS["to"];
+PSST_LABELS["4"] = PSST_LABELS["for"];
 
 function buildTooltipStrings() {
 	result = {};
@@ -1280,7 +1290,8 @@ function buildTooltipStrings() {
 				var lastI = e.lastIndexOf(' '+p+' ');
 				if (lastI==-1)
 					lastI = e.lastIndexOf(p)-1;	// e.g., "after" in "an after-work drink"
-				examplesL[i] = e.slice(1,lastI+1) + p.toUpperCase() + e.slice(lastI+p.length+1, -1);
+				if (lastI>-1)
+					examplesL[i] = e.slice(1,lastI+1) + p.toUpperCase() + e.slice(lastI+p.length+1, -1);
 			}
 			result[sst][p] = examplesL.join(' | ');
 		});
@@ -1289,9 +1300,9 @@ function buildTooltipStrings() {
 }
 PSST_LEX_LABEL_DESCRIPTIONS = buildTooltipStrings();
 
-PSST_TOP_LABELS =  {"about": ["Topic", "2DArea", "1DTrajectory", "Possessor", "Location", "Approximator"],
+PSST_TOP_LABELS = {"about": ["Topic", "2DArea", "1DTrajectory", "Possessor", "Location", "Approximator"],
     "above": ["Location", "Scalar/Rank", "ValueComparison", "1DTrajectory"],
-    "across": ["1DTrajectory", "Duration"],
+    "across": ["1DTrajectory", "Location", "Direction", "Duration"],
     "after": ["RelativeTime", "Cause", "Direction", "Comparison/Contrast", "Scalar/Rank", "Frequency", "ClockTimeCxn"],
     "against": ["Location", "Destination", "Beneficiary", "Co-Agent", "Comparison/Contrast"],
     "along": ["1DTrajectory"],
@@ -1307,9 +1318,9 @@ PSST_TOP_LABELS =  {"about": ["Topic", "2DArea", "1DTrajectory", "Possessor", "L
     "by": ["Agent", "Means", "Cause", "Extent", "Speaker", "Location", "Transit", "Course", "Attribute", "Function", "Temporal", "RelativeTime", "Value", "Manner", "Frequency", "Co-Agent", "Beneficiary", "1DTrajectory"],
     "down": ["1DTrajectory", "Location", "Duration", "Destination"],
     "during": ["Duration"],
-    "for": ["Function", "Stimulus", "Purpose", "Beneficiary", "Duration", "DeicticTime", "Scalar/Rank", "ProfessionalAspect", "Value", "Destination", "Frequency", "Extent", "Co-Theme"],
+    "for": ["Function", "Stimulus", "Cause", "Purpose", "Beneficiary", "Duration", "DeicticTime", "Scalar/Rank", "ProfessionalAspect", "Value", "Theme", "Co-Theme", "Destination", "Frequency", "Extent"],
     "from": ["InitialLocation", "Source", "StartState", "Co-Theme", "Speaker", "Cause", "Location", "Comparison/Contrast", "Material", "StartTime", "Activity"],
-    "in": ["Manner", "Location", "Locus", "Attribute", "Destination", "State", "Age", "Contour", "DeicticTime", "Time", "ProfessionalAspect", "Value"],
+    "in": ["Manner", "Location", "Locus", "Attribute", "Destination", "State", "Age", "Contour", "DeicticTime", "Time", "ProfessionalAspect", "Value", "Duration"],
     "inside": ["Destination", "Location", "DeicticTime"],
     "into": ["Destination", "EndState", "Direction", "Topic", "Duration", "Value", "Activity"],
     "like": ["Comparison/Contrast", "Example/Subset"],
@@ -1322,8 +1333,11 @@ PSST_TOP_LABELS =  {"about": ["Topic", "2DArea", "1DTrajectory", "Possessor", "L
     "through": ["1DTrajectory", "3DMedium", "Course", "Via", "Means", "Location", "Duration", "Destination", "Extent", "EndTime"],
     "to": ["Beneficiary", "Destination", "Recipient", "EndState", "Co-Theme", "Experiencer", "Theme", "ProfessionalAspect", "Location", "Value", "Purpose", "Function", "EndTime", "Comparison/Contrast", "ClockTimeCxn"],
     "towards": ["Direction", "Topic", "Beneficiary", "Goal", "RelativeTime", "Function"],
-    "with": ["Stimulus", "Theme", "Accompanier", "Instrument", "Co-Agent", "Attribute", "Manner", "Topic", "Cause", "ProfessionalAspect", "3DMedium"]};
+    "with": ["Stimulus", "Theme", "Accompanier", "Instrument", "Co-Agent", "Attribute", "Manner", "Topic", "Cause", "ProfessionalAspect", "Co-Theme", "3DMedium"]}
 
+// normalization
+PSST_TOP_LABELS["2"] = PSST_TOP_LABELS["to"];
+PSST_TOP_LABELS["4"] = PSST_TOP_LABELS["for"];
 
 SRIKUMAR_LABELS = ['Activity','Age','Agent','Attribute','Beneficiary','Cause','ClockTimeCxn','Co-Particiants','DeicticTime','Destination','Direction',
 				   'Duration','EndState','EndTime','Experiencer','Frequency','Instrument','Location','Manner','MediumOfCommunication','Numeric',
