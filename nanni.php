@@ -985,7 +985,8 @@ PREPS_MASTER = ["2", "4", "a", "abaft", "aboard", "about", "above", "abreast", "
 	"via", "vice", "vis-a-vis", "vis-à-vis", "vs.", "w/", "w/i", "w/in", "w/o", "westward", 
 	"westwards", "with", "withal", "within", "without", 
 	"a cut above", "a la", "à la", "according to", "after the fashion of", "ahead of", "all for", 
-	"all over", "along with", "apart from", "as far as", "as for", "as from", "as of", "as regards", 
+	"all over", "along with", "apart from", "as far as", "as for", "as from", "as of", 
+	"as opposed to", "as regards", 
 	"as to", "as well as", "aside from", "at a range of", "at the hand of", "at the hands of", 
 	"at the heels of", "back of", "bare of", "because of", "but for", "by courtesy of", 
 	"by dint of", "by force of", "by means of", "by reason of", "by the hand of", 
@@ -1009,7 +1010,7 @@ PREPS_MASTER = ["2", "4", "a", "abaft", "aboard", "about", "above", "abreast", "
 	"on the stroke of", "on top of", "other than", "out of", "out of keeping with", 
 	"out of line with", "outboard of", "outside of", "over against", "over and above", "owing to", 
 	"preparatory to", "previous to", "prior to", "pursuant to", "regardless of", "relative to", 
-	"round about", "short for", "short of", "subsequent to", "thanks to", "this side of", 
+	"round about", "short for", "short of", "such as", "subsequent to", "thanks to", "this side of", 
 	"to the accompaniment of", "to the tune of", "together with", "under cover of", "under pain of", 
 	"under sentence of", "under the heel of", "up against", "up and down", "up before", "up for", 
 	"up to", "upward of", "upwards of", "vis a vis", "vis à vis", "vis - a - vis", "vis - à - vis", 
@@ -1019,7 +1020,7 @@ PREP_SPECIAL_MW_BEGINNERS = ["a", "according", "all", "bare", "because", "but", 
 "contrary", "courtesy", "depending", "due", "exclusive", "inclusive", "instead", 
 "irrespective", "little", "more", "next", "nothing", "other", "outboard", "owing", 
 "preparatory", "previous", "prior", "pursuant", "regardless", "relative", "short", 
-"subsequent", "thanks", "this"];
+"subsequent", "such", "thanks", "this"];
 // removed "having" because it turns up false positives with "have to" (quasimodal)
 /* // Do not contain any single-word prepositions, therefore will not be matched:
 a la
