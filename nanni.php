@@ -1016,10 +1016,11 @@ PREPS_MASTER = ["2", "4", "a", "abaft", "aboard", "about", "above", "abreast", "
 	"with reference to", "with regard to", "with respect to", "with the exception of", 
 	"within sight of"];
 PREP_SPECIAL_MW_BEGINNERS = ["a", "according", "all", "bare", "because", "but", "care", "complete", 
-"contrary", "courtesy", "depending", "due", "exclusive", "having", "inclusive", "instead", 
+"contrary", "courtesy", "depending", "due", "exclusive", "inclusive", "instead", 
 "irrespective", "little", "more", "next", "nothing", "other", "outboard", "owing", 
 "preparatory", "previous", "prior", "pursuant", "regardless", "relative", "short", 
 "subsequent", "thanks", "this"];
+// removed "having" because it turns up false positives with "have to" (quasimodal)
 /* // Do not contain any single-word prepositions, therefore will not be matched:
 a la
 à la
