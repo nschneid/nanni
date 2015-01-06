@@ -1615,8 +1615,17 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 	a.labels = this.labels;
 	a.toplabels = this.toplabels;
 	<? if ($psst) { ?>
-	if (PSST_TOP_LABELS[w])
-		a.toplabels = PSST_TOP_LABELS[w];
+	var prepw = w; 
+	// possibly a multiword prep
+	if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isGrouped(a.tokenOffset, 'strong')) {
+		// get all words in the chunk
+		var classes = ' '+$(a.word).attr("class")+' ';
+		var islu = classes.indexOf(' slu');
+		var sluNum = classes.substr(islu+4,islu+4-1+classes.indexOf(' ',islu+4));
+		prepw = $(a.word).parent().children('.slu'+sluNum).map(function () { return $(this).text(); }).toArray().join(' ');
+	}
+	if (PSST_TOP_LABELS[prepw])
+		a.toplabels = PSST_TOP_LABELS[prepw];
 	<? } ?>
 	a.labelShortcuts = this.labelShortcuts;
 	a.lexlabeldescriptions = this.lexlabeldescriptions;
