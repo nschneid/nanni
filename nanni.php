@@ -1045,7 +1045,7 @@ PSST_LIST_OF_LABELS = ['1DTrajectory', '2DArea', '3DMedium', 'Accompanier', 'Act
     'RelativeTime', 'Scalar/Rank', 'Source', 'Species', 'StartState',
     'StartTime', 'State', 'Stimulus', 'Superset', 'Temporal', 'Theme',
     'Time', 'Topic', 'Transit', 'Value', 'ValueComparison', 'Via',
-    'Whole', '`', '`i', '?'];
+    'Whole', '`', '`i', '`d', '`s', '?'];
 
 PSST_SHORT_DEFS = {
     "1DTrajectory": "One-dimensional path that is the location traversed. {up, down, through, by, above, over, around, along, between, about, across, round}", 
@@ -1576,10 +1576,18 @@ SRIKUMAR_LABEL_DESCRIPTIONS = {"PhysicalSupport": "The object of the preposition
  "Species": "This expresses the relationship between a general category or type and the thing being specified which belongs to the category. The governor is a noun indicating the general category and the object is an instance of that category. \"the city of Prague\", \"this type of book\"",
  "Location": "The prepositional phrase indicates a locative meaning. This relation includes both physical and figurative aspects of location. \"live at Conway house\", \"left it in the cupboard\", \"left it in her will\", \"bruises above both eyes\"",
  '`': '`: No semantic function; purely collocational or syntactic',
- '`i': "Infinitival TO (with no additional semantics)",
+ '`i': "Infinitival TO or FOR (with no additional semantics)",
  '?': 'Unsure. You may be more specific by listing one or more predefined category names (separated by commas), followed by "?".'};
 GENERAL_LABEL_SHORTCUTS = {'`': '`', '?': '?'};
 ALL_LABEL_SHORTCUTS = $.extend({}, N_LABEL_SHORTCUTS, V_LABEL_SHORTCUTS, GENERAL_LABEL_SHORTCUTS);
+
+PSEUDOLABEL_DESCRIPTIONS = {'?': '(unsure; you can also tentatively specify one or more possibilities by following them with ?)', 
+		'`': '(skip for now)',
+		'`i': "infinitival TO or FOR (with no additional semantics)",
+		'`d': 'discourse',
+		'`s': 'non-infinitival subordinator',
+		'`a': 'auxiliary',
+		'`j': 'adjectival'}
 
 function TokenLabelAnnotator(I, itemId) {
 	this._name = 'TokenLabelAnnotator';
@@ -1593,12 +1601,9 @@ function TokenLabelAnnotator(I, itemId) {
 	this.labeldescriptions = PSST_SHORT_DEFS;
 	<? } else { ?>
 	this.labels = Object.keys(this.labelShortcuts); //['LOCATION', 'PERSON', 'TIME', 'GROUP', 'OTHER', '?', '`'];
-	this.labeldescriptions = {'OTHER': 'miscellaneous tag',
-		'?': '(unsure; you can also tentatively specify one or more possibilities by following them with ?)', 
-		'`': '(skip for now)',
-		'`a': 'auxiliary',
-		'`j': 'adjectival'};
+	this.labeldescriptions = {'OTHER': 'miscellaneous tag'};
 	<? } ?>
+	this.labeldescriptions = $.extend(this.labeldescriptions, PSEUDOLABEL_DESCRIPTIONS);
 	this.toplabels = [];
 	if (arguments.length == 0) return; // stop -- necessary for inheritance
 	
@@ -1711,7 +1716,7 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 			focus: function (evt, ui) {	// apply tooltip to focused menu item
 				var v = ui.item.value;
 				var w = $word.text().trim().toLowerCase();
-				if (theactor.lexlabeldescriptions && theactor.lexlabeldescriptions[v][w]!==undefined)
+				if (theactor.lexlabeldescriptions && theactor.lexlabeldescriptions[v]!==undefined && theactor.lexlabeldescriptions[v][w]!==undefined)
 					$(evt.currentTarget).attr("title", theactor.lexlabeldescriptions[v][w]);
 				else if (theactor.labeldescriptions && theactor.labeldescriptions[v]!==undefined)
 					$(evt.currentTarget).attr("title", theactor.labeldescriptions[v]);
@@ -1723,7 +1728,7 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 				// apply tooltip to input box to reflect selection
 				var v = theactor.getValue();
 				var w = $word.text().trim().toLowerCase();
-				if (theactor.lexlabeldescriptions && theactor.lexlabeldescriptions[v][w]!==undefined)
+				if (theactor.lexlabeldescriptions && theactor.lexlabeldescriptions[v]!==undefined && theactor.lexlabeldescriptions[v][w]!==undefined)
 					$(evt.currentTarget).attr("title", theactor.lexlabeldescriptions[v][w]);
 				else if (theactor.labeldescriptions && theactor.labeldescriptions[v]!==undefined)
 					$(this).attr("title", theactor.labeldescriptions[v]);
