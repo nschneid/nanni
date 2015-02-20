@@ -1045,7 +1045,7 @@ PSST_LIST_OF_LABELS = ['1DTrajectory', '2DArea', '3DMedium', 'Accompanier', 'Act
     'RelativeTime', 'Scalar/Rank', 'Source', 'Species', 'StartState',
     'StartTime', 'State', 'Stimulus', 'Superset', 'Temporal', 'Theme',
     'Time', 'Topic', 'Transit', 'Value', 'ValueComparison', 'Via',
-    'Whole', '`', '`i', '`d', '`s', '?'];
+    'Whole', '`', '`i', '`d', '`o', '`s', '?'];
 
 PSST_SHORT_DEFS = {
     "1DTrajectory": "One-dimensional path that is the location traversed. {up, down, through, by, above, over, around, along, between, about, across, round}", 
@@ -1585,6 +1585,7 @@ PSEUDOLABEL_DESCRIPTIONS = {'?': '(unsure; you can also tentatively specify one 
 		'`': '(skip for now)',
 		'`i': "infinitival TO or FOR (with no additional semantics)",
 		'`d': 'discourse',
+		'`o': 'pronoun',
 		'`s': 'non-infinitival subordinator',
 		'`a': 'auxiliary',
 		'`j': 'adjectival'}
