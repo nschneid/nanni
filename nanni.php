@@ -1045,7 +1045,7 @@ PSST_LIST_OF_LABELS = ['1DTrajectory', '2DArea', '3DMedium', 'Accompanier', 'Act
     'RelativeTime', 'Scalar/Rank', 'Source', 'Species', 'StartState',
     'StartTime', 'State', 'Stimulus', 'Superset', 'Temporal', 'Theme',
     'Time', 'Topic', 'Transit', 'Value', 'ValueComparison', 'Via',
-    'Whole', '`', '`i', '`d', '`o', '`s', '?'];
+    'Whole', '`', '`i', '`a', '`d', '`j', '`o', '`s', '?'];
 
 PSST_SHORT_DEFS = {
     "1DTrajectory": "One-dimensional path that is the location traversed. {up, down, through, by, above, over, around, along, between, about, across, round}", 
@@ -1630,8 +1630,10 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 		var sluNum = classes.substr(islu+4,islu+4-1+classes.indexOf(' ',islu+4));
 		prepw = $(a.word).parent().children('.slu'+sluNum).map(function () { return $(this).text(); }).toArray().join(' ');
 	}
-	if (PSST_TOP_LABELS[prepw])
+	if (PSST_TOP_LABELS[prepw])	// prepw may be an MWE
 		a.toplabels = PSST_TOP_LABELS[prepw];
+	else if (PSST_TOP_LABELS[w])	// back off to first word if MWE is not listed
+		a.toplabels = PSST_TOP_LABELS[w];
 	<? } ?>
 	a.labelShortcuts = this.labelShortcuts;
 	a.lexlabeldescriptions = this.lexlabeldescriptions;
