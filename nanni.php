@@ -300,7 +300,11 @@ if ($iFrom>-1) {
 
 				if (!$new || $new==='^') {	// load user's current version of the sentence, if applicable
 					if ($readonly) {
-						$sentdata['versions'] = get_key_values(get_user_dir($_REQUEST['versions'])."/$split.nanni", $sentId);
+						if ($versions && false) {
+							// TODO: what is this line supposed to do?? may have been vestigial and failing silently because $_REQUEST['versions'] was empty
+							// (git blame points to the commit "show comments in versions box", but such comments seem to appear fine without it.)
+							$sentdata['versions'] = get_key_values(get_user_dir($_REQUEST['versions'])."/$split.nanni", $sentId);
+						}
 					}
 					else {
 						$v = get_key_value("$udir/$split.nanni", $sentId);
@@ -325,6 +329,7 @@ if ($iFrom>-1) {
 						}
 					}
 				}
+
 				
 				if ($nsst || $vsst || $psst) {	// load POS tags
 					$posJS = get_key_value("$pdir/$split.pos.json", $sentId, false);
@@ -2611,7 +2616,7 @@ function doSubmit() {
 <div id="_<?= $sid ?>" class="item">
 <input type="hidden" name="sentid[]" value="<?= $sid ?>" />
 <input type="hidden" name="split[]" value="<?= $s['split'] ?>" />
-<input type="hidden" name="reconciled[<?= $I ?>][0]" value="<?= $s['reconciled'][0] ?>" />
+<input type="hidden" name="reconciled[<?= $I ?>][0]" value="<?= $s['reconciled'][0] ?>" disabled="<?= ($reconcile) ? 'false' : 'disabled' ?>" />
 <input type="hidden" name="reconciledtime[<?= $I ?>][0]" value="<?= $s['reconciledtime'][0] ?>" />
 <? if (count($s['reconciled'])>1) { ?>
 <input type="hidden" name="reconciled[<?= $I ?>][1]" value="<?= $s['reconciled'][count($s['reconciled'])-1] ?>" />
