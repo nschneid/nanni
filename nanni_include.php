@@ -305,6 +305,9 @@ if (isset($_REQUEST['u'])) {	// impersonating another user
 
 
 function get_user_dir($usr) {
+	if (strlen($usr)==0) {
+		debug_print_backtrace();
+	}
 	return "users/$usr";
 }
 $udir = get_user_dir($u);	// user directory
