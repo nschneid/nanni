@@ -266,19 +266,31 @@ if ($iFrom>-1) {
 
 				if ($reconcile!==null) {
 					if (in_array('^', array_slice($reconcile, 1)))
-						die("'^' must be first reconcile argument");
-					if ($reconcile[0]=='^') {	// find user with most recent annotation for this sentence
+						die("'^' or '^USER-GROUP-PREFIX' must be first reconcile argument");
+					if (substr($reconcile[0],0,1)=='^') {	// find user with most recent annotation for this sentence
+						$ugFilter = substr($reconcile[0],1);	// ...filtered by user group prefix
 						$Atstamp = -1;
 						foreach (get_key_values(get_user_dir('*') . "/$split.nanni", $sentId) as $data) {
 							$parts = explode("\t", $data);
 							$tstamp = intval($parts[1]);
 							if ($tstamp > $Atstamp) {	// this is the newest so far
-								$A = substr($parts[2], 1);	// @user --[strip @]--> user
+								$provisionalA = substr($parts[2], 1);	// @user --[strip @]--> user
+								if (strlen($ugFilter)>0) {
+									if (!isset($UGROUPS[$provisionalA]))
+										die("No user group for: $provisionalA");
+									if (strrpos($UGROUPS[$provisionalA], $ugFilter, -strlen($haystack)) === FALSE) {
+										// user group name does not start with $ugFilter
+										continue;
+									}
+								}
+								$A = $provisionalA;
 								$Adata = $data;
 								$Aparts = $parts;
 								$Atstamp = $tstamp;
 							}
 						}
+						if ($Atstamp<0)
+							die("No annotation to reconcile for: " . $reconcile[0]);
 						$reconcile[0] = $A;	// record which user was newest
 					}
 					else {
@@ -289,6 +301,8 @@ if ($iFrom>-1) {
 					}
 					
 					$B = $reconcile[count($reconcile)-1];
+					if (substr($B,0,1)=='^')
+						die("'^' or '^USER-GROUP-PREFIX' must be first reconcile argument");
 					$Bdata = get_key_value(get_user_dir($B) . "/$split.nanni", $sentId);
 					// possibly the same user as A, in which case that user's annotations will simply be imported
 					$Bparts = explode("\t", $Bdata);
