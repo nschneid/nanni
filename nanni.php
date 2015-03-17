@@ -1462,13 +1462,8 @@ function buildTooltipStrings() {
 			}
 			var examplesL = PSST_LABELS[p][sst].slice(1);
 			for (var i=0; i<examplesL.length; i++) {	// for each example, capitalize the target preposition
-				// (heuristically identified as the last whitespace-separated matching word)
-				var e = ' '+examplesL[i]+' ';
-				var lastI = e.lastIndexOf(' '+p+' ');
-				if (lastI==-1)
-					lastI = e.lastIndexOf(p)-1;	// e.g., "after" in "an after-work drink"
-				if (lastI>-1)
-					examplesL[i] = e.slice(1,lastI+1) + p.toUpperCase() + e.slice(lastI+p.length+1, -1);
+				// (heuristically identified as the last matching word)
+				examplesL[i] = examplesL[i].replace(new RegExp("(.*)\\b"+p+"\\b", "i"), "$1"+p.toUpperCase());
 			}
 			result[sst][p] = examplesL.join(' | ');
 			if (PSST_SHORT_DEFS[sst]!==undefined)
