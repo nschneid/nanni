@@ -364,6 +364,7 @@ if ($iFrom>-1) {
 					$tip = $anno . "\n" . $time;
 					$status = ($timestamp<(mktime()-24*60*60)) ? 'sAnn' : 'sRecent';
 					$hasQuestionLabel = preg_match('/\|[^"]+\?/', $parts[count($parts)-3]);
+					$hasPlainQuestionMark = preg_match('/\|\?"/', $parts[count($parts)-3]);
 				}
 				else {
 					$time = '';
@@ -374,6 +375,7 @@ if ($iFrom>-1) {
 					$tip = '';
 					$status = 'sUnann';
 					$hasQuestionLabel = false;
+					$hasPlainQuestionMark = false;
 				}
 				
 				// extra data for the sentence (if available)
@@ -383,7 +385,7 @@ if ($iFrom>-1) {
 				}
 				else $e = '';
 				
-?><tr id="_<?= $sentId ?>"><th class="num" title="<?= $sentId ?>" id="n<?= $l ?>"><?= $l ?></th><td class="rawitem <?= $status ?><?= ($hasChkLbls) ? ' hasChkLbls' : '' ?>" title="<?= $tip ?>"><a href="<?= $annurl ?>"><?= $sent ?></a></td><td class="qmark"><?= ($hasQuestionLabel) ? '&#x2753;' : '' ?></td><td class="note"><?= $note ?></td><td class="extra"><?= $e ?></td><td class="users"><?
+?><tr id="_<?= $sentId ?>"><th class="num" title="<?= $sentId ?>" id="n<?= $l ?>"><?= $l ?></th><td class="rawitem <?= $status ?><?= ($hasChkLbls) ? ' hasChkLbls' : '' ?>" title="<?= $tip ?>"><a href="<?= $annurl ?>"><?= $sent ?></a></td><td class="qmark"><?= ($hasQuestionLabel) ? '&#x2753;&#x2753;' : (($hasPlainQuestionMark) ? '&#x2753;' : '') ?></td><td class="note"><?= $note ?></td><td class="extra"><?= $e ?></td><td class="users"><?
 					foreach (get_key_values("users/*/$split.nanni", $sentId) as $j => $data) {
 						$parts = explode("\t", $data);
 						$timestamp = intval($parts[1]);
@@ -521,7 +523,7 @@ if ($iFrom>-1) {
 ?>
 </table>
 
-<? if ($issuperuser) { ?><pre><? print_r($iaa); ?></pre><? } ?>
+<? if ($issuperuser || $authenticated_alias=='mgreen') { ?><pre><? print_r($iaa); ?></pre><? } ?>
 <?
 	}
 }
