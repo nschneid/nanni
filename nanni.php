@@ -1355,6 +1355,8 @@ PSST_LABELS = {"about": {"1DTrajectory": [18, "They skipped about my feet, a flo
     "Via": [10, "a new twelve-part TV series on Channel 4."]},
 "on account of": {"Explanation": [242, "It is understood her sentence was cut to 12 years on account of her guilty plea.", "Traffic accidents continue to claim a large number of lives on account of several factors.", "As a result of this, I have not been able to take any time off on account of not feeling well.", "We had decided to go down the river first, on account of car parking.", "The need for the Thames Estuary sea forts arose in the last war on account of the mining of our waters with magnetic mines."]},
 "onto": {"Destination": [175, "an onto mapping.", "a small strip of tape designed to stick firmly onto skin"]},
+"out": {"Destination": [0, "With this weather, it isn't safe to go out (=outside)."], 
+    "Direction": [0, "I put a nickel into the machine and a gumball came out.", "He took a good drag off the Arturo Fuente and let the smoke waft out from between pursed lips."]},
 "out of": {"1DTrajectory": [0, "He climbed back out of the window"], 
     "InitialLocation": [0, "Then, without a word, he stormed out of the room, slamming the door shut as he went.", "I grabbed a piece of toast and let myself out of the house.", "the single narrow road that led out of the forest."], 
     "Location": [0, "We picked up a hitchhiker about ten miles out of town."], 
@@ -1449,9 +1451,7 @@ PSST_LABELS = {"about": {"1DTrajectory": [18, "They skipped about my feet, a flo
 "without": {"Location": [0]}
 };
 
-// normalization
-PSST_LABELS["2"] = PSST_LABELS["to"];
-PSST_LABELS["4"] = PSST_LABELS["for"];
+
 
 function buildTooltipStrings() {
 	result = {};
@@ -1473,6 +1473,17 @@ function buildTooltipStrings() {
 	return result;
 }
 PSST_LEX_LABEL_DESCRIPTIONS = buildTooltipStrings();
+// normalization/aliases
+// after buildTooltipStrings(), so OUT OF is correctly capitalized in examples whether filed under 'out' or 'out of'
+PSST_LABELS["2"] = PSST_LABELS["to"];
+Object.keys(PSST_LEX_LABEL_DESCRIPTIONS).forEach(function (sst) {
+	if (PSST_LEX_LABEL_DESCRIPTIONS[sst]["to"]) 
+		PSST_LEX_LABEL_DESCRIPTIONS[sst]["2"] = PSST_LEX_LABEL_DESCRIPTIONS[sst]["to"];
+	if (PSST_LEX_LABEL_DESCRIPTIONS[sst]["for"])
+		PSST_LEX_LABEL_DESCRIPTIONS[sst]["4"] = PSST_LEX_LABEL_DESCRIPTIONS[sst]["for"];
+	if (PSST_LEX_LABEL_DESCRIPTIONS[sst]["out of"])
+		PSST_LEX_LABEL_DESCRIPTIONS[sst]["out"] = PSST_LEX_LABEL_DESCRIPTIONS[sst]["out of"];
+});
 
 PSST_TOP_LABELS = {"about": ["Topic", "2DArea", "1DTrajectory", "Possessor", "Location", "Approximator"],
     "above": ["Location", "Scalar/Rank", "ValueComparison", "1DTrajectory"],
@@ -1513,6 +1524,7 @@ PSST_TOP_LABELS = {"about": ["Topic", "2DArea", "1DTrajectory", "Possessor", "Lo
     "on": ["Location", "Topic", "Destination", "Theme", "Goal", "Beneficiary", "Time", "Other", "Locus", "Via", "State", "Activity", "Possessor", "ProfessionalAspect"],
     "on account of": ["Explanation"],
     "onto": ["Destination"],
+    "out": ["Direction", "Destination"],
     "out of": ["Superset", "Location", "InitialLocation", "1DTrajectory"],
     "outside": ["ProfessionalAspect", "Location"],
     "over": ["Location", "Topic", "1DTrajectory", "Patient", "Duration", "Destination", "Scalar/Rank", "Via", "Approximator"],
@@ -1537,6 +1549,7 @@ PSST_TOP_LABELS = {"about": ["Topic", "2DArea", "1DTrajectory", "Possessor", "Lo
 // normalization
 PSST_TOP_LABELS["2"] = PSST_TOP_LABELS["to"];
 PSST_TOP_LABELS["4"] = PSST_TOP_LABELS["for"];
+PSST_TOP_LABELS["out"] = PSST_TOP_LABELS["out"].concat(PSST_TOP_LABELS["out of"]);
 
 SRIKUMAR_LABELS = ['Activity','Age','Agent','Attribute','Beneficiary','Cause','ClockTimeCxn','Co-Particiants','DeicticTime','Destination','Direction',
 				   'Duration','EndState','EndTime','Experiencer','Frequency','Instrument','Location','Manner','MediumOfCommunication','Numeric',
