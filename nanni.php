@@ -1683,11 +1683,12 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 	<? if ($psst) { ?>
 	var prepw = w; 
 	// possibly a multiword prep
+	// TODO: this logic doesn't get executed when updating MWE analysis.
 	if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isGrouped(a.tokenOffset, 'strong')) {
 		// get all words in the chunk
 		var classes = ' '+$(a.word).attr("class")+' ';
 		var islu = classes.indexOf(' slu');
-		var sluNum = classes.substr(islu+4,islu+4-1+classes.indexOf(' ',islu+4));
+		var sluNum = classes.match(/\bslu(\d+)\b/)[1];
 		prepw = $(a.word).parent().children('.slu'+sluNum).map(function () { return $(this).text(); }).toArray().join(' ');
 	}
 	if (PSST_TOP_LABELS[prepw])	// prepw may be an MWE
