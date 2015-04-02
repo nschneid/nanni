@@ -523,7 +523,7 @@ if ($iFrom>-1) {
 ?>
 </table>
 
-<? if ($issuperuser || $authenticated_alias=='mgreen') { ?><pre><? print_r($iaa); ?></pre><? } ?>
+<? if ($issuperuser) { ?><pre><? print_r($iaa); ?></pre><? } ?>
 <?
 	}
 }
