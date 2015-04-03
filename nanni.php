@@ -1722,7 +1722,7 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 		var classes = ' '+$(a.word).attr("class")+' ';
 		var islu = classes.indexOf(' slu');
 		var sluNum = classes.match(/\bslu(\d+)\b/)[1];
-		prepw = $(a.word).parent().children('.slu'+sluNum).map(function () { return $(this).text(); }).toArray().join(' ');
+		prepw = $(a.word).parent().children('.slu'+sluNum).map(function () { return $(this).text().toLowerCase(); }).toArray().join(' ');
 	}
 	if (PSST_TOP_LABELS[prepw])	// prepw may be an MWE
 		a.toplabels = PSST_TOP_LABELS[prepw];
