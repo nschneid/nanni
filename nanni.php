@@ -1704,6 +1704,31 @@ function TokenLabelAnnotator(I, itemId) {
 	Annotator(this, I, itemId);
 	this.actors = [];
 }
+function strongUnitString(a) {	// given an Actor, the strong unit (multiword group or single-word unit)
+	if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isGrouped(a.tokenOffset, 'strong')) {
+		// get all words in the multiword unit
+		var classes = ' '+$(a.word).attr("class")+' ';
+		var islu = classes.indexOf(' slu');
+		var sluNum = classes.match(/\bslu(\d+)\b/)[1];
+		return $(a.word).parent().children('.slu'+sluNum).map(function () { return $(this).text(); }).toArray().join(' ');
+	}
+	return $(a.word).text();	// single word
+}
+function getTooltip(a, lbl) {	// given an Actor and a supersense label, return the string for the appropriate tooltip
+	if (a.lexlabeldescriptions && a.lexlabeldescriptions[lbl]!==undefined) {
+		var ww = strongUnitString(a).toLowerCase();
+		var w = ww.split(" ")[0];
+		if (a.lexlabeldescriptions[lbl][ww]!==undefined)
+			return a.lexlabeldescriptions[lbl][ww];
+		else if (a.lexlabeldescriptions[lbl][w]!==undefined)
+			return a.lexlabeldescriptions[lbl][w];
+		else
+			return a.labeldescriptions[lbl];
+	}
+	else {
+		return "";
+	}
+}
 TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 	var a = new Actor(this);
 	a.word = wordelt;
@@ -1714,16 +1739,7 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 	a.labels = this.labels;
 	a.toplabels = this.toplabels;
 	<? if ($psst) { ?>
-	var prepw = w; 
-	// possibly a multiword prep
-	// TODO: this logic doesn't get executed when updating MWE analysis.
-	if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isGrouped(a.tokenOffset, 'strong')) {
-		// get all words in the chunk
-		var classes = ' '+$(a.word).attr("class")+' ';
-		var islu = classes.indexOf(' slu');
-		var sluNum = classes.match(/\bslu(\d+)\b/)[1];
-		prepw = $(a.word).parent().children('.slu'+sluNum).map(function () { return $(this).text().toLowerCase(); }).toArray().join(' ');
-	}
+	var prepw = strongUnitString(a); // possibly a multiword prep. TODO: this logic doesn't get executed when updating MWE analysis.
 	if (PSST_TOP_LABELS[prepw])	// prepw may be an MWE
 		a.toplabels = PSST_TOP_LABELS[prepw];
 	else if (PSST_TOP_LABELS[w])	// back off to first word if MWE is not listed
@@ -1812,27 +1828,15 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 			autoFocus: true, minLength: 0, html: true, 	// the html option uses an extension script
 			focus: function (evt, ui) {	// apply tooltip to focused menu item
 				var v = ui.item.value;
-				var w = $word.text().trim().toLowerCase();
-				if (theactor.lexlabeldescriptions && theactor.lexlabeldescriptions[v]!==undefined && theactor.lexlabeldescriptions[v][w]!==undefined)
-					$(evt.currentTarget).attr("title", theactor.lexlabeldescriptions[v][w]);
-				else if (theactor.labeldescriptions && theactor.labeldescriptions[v]!==undefined)
-					$(evt.currentTarget).attr("title", theactor.labeldescriptions[v]);
-				else
-					$(evt.currentTarget).attr("title", "");
+				var tt = getTooltip(theactor, v);
+				$(evt.currentTarget).attr("title", tt);
 			},
 			// don't handle 'select' event because the value won't be updated yet!
 			change: function (evt, ui) {
 				// apply tooltip to input box to reflect selection
 				var v = theactor.getValue();
-				var w = $word.text().trim().toLowerCase();
-				if (theactor.lexlabeldescriptions && theactor.lexlabeldescriptions[v]!==undefined && theactor.lexlabeldescriptions[v][w]!==undefined)
-					$(evt.currentTarget).attr("title", theactor.lexlabeldescriptions[v][w]);
-				else if (theactor.labeldescriptions && theactor.labeldescriptions[v]!==undefined)
-					$(this).attr("title", theactor.labeldescriptions[v]);
-				else if (v.trim()!="")	// tooltip in case text overflows the box (is clipped)
-					$(this).attr("title", v);
-				else
-					$(this).attr("title", "");
+				var tt = getTooltip(theactor, v);
+				$(this).attr("title", tt);
 
 				ann_update(theactor, v);
 			},
