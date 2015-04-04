@@ -53,7 +53,8 @@ lexical index
 body,tbody { font-family: "Helvetica Neue",helvetica,arial,sans-serif; }
 div.item { max-width: 40em; margin-left: auto; margin-right: auto; }
 .rawitem.sUnann,.rawitem.sUnann a { color: #000; }
-.rawitem.sRecent,.rawitem.sRecent a { color: #6a0; }
+.rawitem.sRecent1d,.rawitem.sRecent1d a { color: #6a0; }
+.rawitem.sRecent7d,.rawitem.sRecent7d a { color: #aa0; }
 .rawitem.sAnn,.rawitem.sAnn a { color: #33c; }
 .rawitem > a { text-decoration: none; }
 #items { border-collapse: collapse; }
@@ -73,7 +74,7 @@ div.item { max-width: 40em; margin-left: auto; margin-right: auto; }
 .usr5 { color: #093; background-color: #093; }
 .user:not(.hasnote) { background-color: transparent; }
 .user.hasnote { color: #fff; }
-.user.sRecent { font-weight: bold; }
+.user.sRecent1d { font-weight: bold; }
 
 .wlu7 { border-bottom: dotted 2px #09f; }
 .wlu6 { border-bottom: dotted 2px #f00; }
@@ -362,7 +363,7 @@ if ($iFrom>-1) {
 					$anno = htmlspecialchars($parts[count($parts)-2]);
 					$note = htmlspecialchars($parts[count($parts)-1]);
 					$tip = $anno . "\n" . $time;
-					$status = ($timestamp<(mktime()-24*60*60)) ? 'sAnn' : 'sRecent';
+					$status = ($timestamp<(mktime()-7*24*60*60)) ? 'sAnn' : (($timestamp<(mktime()-24*60*60)) ? 'sRecent7d' : 'sRecent1d');
 					$hasQuestionLabel = preg_match('/\|[^"]+\?/', $parts[count($parts)-3]);
 					$hasPlainQuestionMark = preg_match('/\|\?"/', $parts[count($parts)-3]);
 				}
@@ -511,7 +512,7 @@ if ($iFrom>-1) {
 						$tip = $anno . "\n" . $time;
 						if ($note)
 							$tip .= "\n" . $note;
-						$status = ($timestamp<(mktime()-24*60*60)) ? 'sAnn' : 'sRecent';
+						$status = ($timestamp<(mktime()-7*24*60*60)) ? 'sAnn' : (($timestamp<(mktime()-24*60*60)) ? 'sRecent7d' : 'sRecent1d');
 ?><span class="user usr<?= $userOffset ?> <?= $status ?><?= ($hasChkLbls2) ? ' hasChkLbls' : '' ?><?= ($note) ? ' hasnote' : '' ?>" title="<?= $tip ?>"><?= $userId ?></span><sub><?= $ndiff ?></sub> <?
 					}
 ?></td></tr>
