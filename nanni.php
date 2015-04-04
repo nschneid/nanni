@@ -105,10 +105,17 @@ $embedded = array_key_exists('embedded', $_REQUEST);
   	If reconciling with another user's annotation, that will be shown instead; 
   	otherwise the sentence will be shown without any annotation.
   	
+  - new=psst
+  	Same as new, but in addition, clear out all preposition tags from the annotation.
+  	
   - new=^
     Ignore the current user's current annotation of this sentence 
     iff it is older than the annotation from another user being reconciled against.
 
+  - new=^psst
+    Same as new=^, but in addition, clear out all preposition tags from the annotation 
+    (unless the current user's annotation is the most recent).
+    
   - (unspecified)
     If the current user has annotated the sentence, their most recent annotation 
     will be shown, regardless of reconciliation options.
@@ -346,7 +353,7 @@ if ($iFrom>-1) {
 					$sentdata['reconciledtime'] = array($Atstamp, $Btstamp);
 				}
 
-				if (!$new || $new==='^') {	// load user's current version of the sentence, if applicable
+				if (!$new || $new{0}==='^') {	// load user's current version of the sentence, if applicable
 					if ($readonly) {
 						if ($versions && false) {
 							// TODO: what is this line supposed to do?? may have been vestigial and failing silently because $_REQUEST['versions'] was empty
@@ -2157,7 +2164,18 @@ ChunkLabelAnnotator.prototype.identifyTargets = function() {
 	decorateActor = function (a) {
 		a.deserialize = function (isInitial) {
 			var val = '';
-			if (this.ann.target.value) {
+			var ignoreInitialVal = <?= ($new==='psst') ? 'true' : (($new==='^psst') ? '"maybe"' : 'false') ?>;
+			if (ignoreInitialVal==='maybe') {
+				// ignore the value iff the annotation being loaded is from someone other than the current user
+				ignoreInitialVal = ($(item).find('input.reconcileduser').eq(0).val() != "<?= $u ?>");
+			}
+			
+			// N.B. If ignoring only PSST annotations, after deserialize(true) is called 
+			// and we determine which tokens are prepositions, 
+			// deserialize(false) will be called for other tokens to load their labels. 
+			// In the deserialize(true) call, all labels will be (provisionally) ignored; 
+			// then, in the deserialize(false) call, 'ignoreInitialVal' will be irrelevant.
+			if ((!isInitial || !ignoreInitialVal) && this.ann.target.value) {
 				var v = $.parseJSON(this.ann.target.value)[this.tokenOffset];
 				if (v) {
 					v = v.split('|');	// if of the form word|LABEL, strip the first part
@@ -2215,7 +2233,8 @@ ChunkLabelAnnotator.prototype.identifyTargets = function() {
 ChunkLabelAnnotator.prototype.updateTargets = function(updateInfo) {
 	var theann = this;
 	$.each(this.actors, function (j, a) {
-		this.deserialize(false);	// look up this actor's value from overall annotator value (may have changed in the versions browser)
+		if (<?= ($readonly) ? 'true' : 'false' ?>)
+			this.deserialize(false);	// look up this actor's value from overall annotator value (may have changed in the versions browser)
 		
 		// update defaults to reflect the current MWE analysis
 		if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, theann.filterFxn, (theann.filterFxn==ChunkLabelAnnotator.prototype.P_FILTER) ? PREP_SPECIAL_MW_BEGINNERS : false)) {
@@ -2253,6 +2272,10 @@ ChunkLabelAnnotator.prototype.updateTargets = function(updateInfo) {
 				a.validate();
 			}
 			else {
+				if (<?= ($readonly) ? 'false' : 'true' ?>) {
+					this.deserialize(false);	// restore the initial (saved) value for this field, since it might have been ignored but is not the subject of this annotation phase
+					a.submittable = (a.target.value!=="");
+				}
 				$(a.target).prop("disabled","disabled").prop("required","");
 			}
 			if (theann.constructor.started && a.submittable) a.aparecium();
@@ -2737,7 +2760,7 @@ function doSubmit() {
 <div id="_<?= $sid ?>" class="item">
 <input type="hidden" name="sentid[]" value="<?= $sid ?>" />
 <input type="hidden" name="split[]" value="<?= $s['split'] ?>" />
-<input type="hidden" name="reconciled[<?= $I ?>][0]" value="<?= $s['reconciled'][0] ?>" disabled="<?= ($reconcile) ? 'false' : 'disabled' ?>" />
+<input type="hidden" name="reconciled[<?= $I ?>][0]" class="reconcileduser" value="<?= $s['reconciled'][0] ?>" disabled="<?= ($reconcile) ? 'false' : 'disabled' ?>" />
 <input type="hidden" name="reconciledtime[<?= $I ?>][0]" value="<?= $s['reconciledtime'][0] ?>" />
 <? if (count($s['reconciled'])>1) { ?>
 <input type="hidden" name="reconciled[<?= $I ?>][1]" value="<?= $s['reconciled'][count($s['reconciled'])-1] ?>" />
