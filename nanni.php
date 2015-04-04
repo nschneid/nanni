@@ -95,13 +95,47 @@ $nonav = array_key_exists('nonav', $_REQUEST);
 $nosubmit = array_key_exists('nosubmit', $_REQUEST);
 $vv = isset($_REQUEST['v']) ? $_REQUEST['v'] : null;	// invoke version browser(s) in an iframe
 $embedded = array_key_exists('embedded', $_REQUEST);
+
+/** @param: new
+  This governs the selection of the annotation to display for the sentence when the page loads.
+  It interacts with the 'reconcile' parameter.
+  
+  - new  
+    Ignore the current user's annotations of this sentence. 
+  	If reconciling with another user's annotation, that will be shown instead; 
+  	otherwise the sentence will be shown without any annotation.
+  	
+  - new=^
+    Ignore the current user's current annotation of this sentence 
+    iff it is older than the annotation from another user being reconciled against.
+
+  - (unspecified)
+    If the current user has annotated the sentence, their most recent annotation 
+    will be shown, regardless of reconciliation options.
+*/
 $new = $_REQUEST['new'];
 if (!$new)
 	$new = array_key_exists('new', $_REQUEST);
 if ($embedded) $new = false;
-$reconcile = (isset($_REQUEST['reconcile']) && !$embedded) ? $_REQUEST['reconcile'] : null;	// user whose annotations should be imported, or 2 users whose annotations should be reconciled
+
+/** @param: reconcile
+This specifies a user whose annotations should be imported and displayed when the page loads, 
+or 2 users whose annotations should be reconciled (i.e. their diff is displayed when the page loads).
+Interacts with the 'new' parameter.
+
+  - reconcile[0]=UserSpecifier
+  - reconcile[0]=UserSpecifier1&reconcile[1]=UserSpecifier2
+
+UserSpecifier can be any of:
+  - a specific user alias
+  - ^ to mean the most recent annotation of this sentence (from any user)
+  - ^USER-GROUP-PREFIX to mean the most recent annotation from any user whose group 
+    designator has the given prefix
+*/
+$reconcile = (isset($_REQUEST['reconcile']) && !$embedded) ? $_REQUEST['reconcile'] : null;
 if ($reconcile!==null && !is_array($reconcile))
 	$reconcile = array(0 => $reconcile);
+	
 $versions = array_key_exists('versions', $_REQUEST);	// the version browser itself
 $instructionsCode = (array_key_exists('inst', $_REQUEST)) ? $_REQUEST['inst'] : '';
 $instructions = "mwe_ann_instructions$instructionsCode.md";
