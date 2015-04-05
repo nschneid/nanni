@@ -2763,7 +2763,7 @@ function doSubmit() {
 <div id="_<?= $sid ?>" class="item">
 <input type="hidden" name="sentid[]" value="<?= $sid ?>" />
 <input type="hidden" name="split[]" value="<?= $s['split'] ?>" />
-<input type="hidden" name="reconciled[<?= $I ?>][0]" class="reconcileduser" value="<?= $s['reconciled'][0] ?>" disabled="<?= ($reconcile) ? 'false' : 'disabled' ?>" />
+<input type="hidden" name="reconciled[<?= $I ?>][0]" class="reconcileduser" value="<?= $s['reconciled'][0] ?>" <?= ($reconcile) ? '' : 'disabled="disabled"' ?> />
 <input type="hidden" name="reconciledtime[<?= $I ?>][0]" value="<?= $s['reconciledtime'][0] ?>" />
 <? /** usingCurrentVersionThisUser: "true" iff no other user's annotation actually factors into what is initially displayed 
 for this sentence (empty otherwise). This could be because no reconcile[] option was used, or no matching other user 
