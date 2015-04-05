@@ -301,6 +301,19 @@ else {
 }
 
 
+function noBacktick($s) {
+	return (strpos($s, '`')===false);
+}
+
+function notNounOrVerbSST($s) {
+	// true unless 's' has a noun or verb supersense tag (determined by casing)
+	$parts = explode('|', $s);
+	$sst = $parts[1];
+	if (preg_match('/^([A-Z ]+|[a-z]+)$/', $sst))
+		return false;
+	return true;
+}
+
 if ($iFrom>-1) {
 	
 	// TODO: pagination
@@ -359,7 +372,7 @@ if ($iFrom>-1) {
 					$timestamp = intval($parts[1]);
 					$time = date('r', $timestamp);
 					$infoJ = json_decode(str_replace("\\'", "'", $parts[count($parts)-3]), true);
-					$hasChkLbls = ($infoJ['chklbls']!==null) ? true : false;					
+					$hasChkLbls = ($infoJ['chklbls']!==null) ? true : false;
 					$anno = htmlspecialchars($parts[count($parts)-2]);
 					$note = htmlspecialchars($parts[count($parts)-1]);
 					$tip = $anno . "\n" . $time;
@@ -505,6 +518,32 @@ if ($iFrom>-1) {
 							
 							$alpha = 0.5;
 							$iaa[$userId]["interpF_alpha=$alpha"] = $alpha*$iaa[$userId]['sF'] + (1.0-$alpha)*$iaa[$userId]['swF'];
+							
+							if ($hasChkLbls && $hasChkLbls2) {	// IAA for labels
+								$lbls1 = $infoJ['chklbls'];
+								$lbls2 = $infoJ2['chklbls'];
+								$lbls1Only = array_diff_assoc($lbls1, $lbls2);
+								$lbls2Only = array_diff_assoc($lbls2, $lbls1);
+								$iaa[$userId]['lcommon'] += count($lbls1) - count($lbls1Only);
+								$iaa[$userId]['ltotal'] += count(array_intersect_key($lbls1,$lbls2));
+								$iaa[$userId]['lA'] = $iaa[$userId]['lcommon'] / $iaa[$userId]['ltotal'];
+								
+								$lbls1 = array_filter($lbls1, "noBacktick");
+								$lbls2 = array_filter($lbls2, "noBacktick");
+								$lbls1Only = array_diff_assoc($lbls1, $lbls2);
+								$lbls2Only = array_diff_assoc($lbls2, $lbls1);
+								$iaa[$userId]['lcommonNoBacktick'] += count($lbls1) - count($lbls1Only);
+								$iaa[$userId]['ltotalNoBacktick'] += count(array_intersect_key($lbls1,$lbls2));
+								$iaa[$userId]['lANoBacktick'] = $iaa[$userId]['lcommonNoBacktick'] / $iaa[$userId]['ltotalNoBacktick'];
+								
+								$lbls1 = array_filter($lbls1, "notNounOrVerbSST");
+								$lbls2 = array_filter($lbls2, "notNounOrVerbSST");
+								$lbls1Only = array_diff_assoc($lbls1, $lbls2);
+								$lbls2Only = array_diff_assoc($lbls2, $lbls1);
+								$iaa[$userId]['lcommonPSST'] += count($lbls1) - count($lbls1Only);
+								$iaa[$userId]['ltotalPSST'] += count(array_intersect_key($lbls1,$lbls2));
+								$iaa[$userId]['lAPSST'] = $iaa[$userId]['lcommonPSST'] / $iaa[$userId]['ltotalPSST'];
+							}
 						}
 
 						$anno = htmlspecialchars($parts[count($parts)-2]);
