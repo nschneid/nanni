@@ -235,6 +235,7 @@ if ($iFrom>-1) {
 				}
 				$avals .= '  "reconciled": {"users": ' . json_encode($_REQUEST['reconciled'][$I]) . ', "times": ' . json_encode(array_map(intval, $_REQUEST['reconciledtime'][$I])) . '},';
 			}
+			$avals .= '  "usingCurrentVersionThisUser": "' . $_REQUEST['usingCurrentVersionThisUser'][$I] . '",';
 			if (isset($query))
 				$avals .= '  "query": "' . addslashes($query) . '",';
 			$chklbls = ($_REQUEST['chklbls']) ? $_REQUEST['chklbls'][$I] : '{}';
@@ -380,6 +381,7 @@ if ($iFrom>-1) {
 									$sentdata['reconciled'] = array(0=>$u);
 									$sentdata['reconciledtime'] = array(0=>$tstamp);
 								}
+								$sentdata['usingCurrentVersionThisUser'] = 'true';
 							}
 						}
 					}
@@ -2167,7 +2169,8 @@ ChunkLabelAnnotator.prototype.identifyTargets = function() {
 			var ignoreInitialVal = <?= ($new==='psst') ? 'true' : (($new==='^psst') ? '"maybe"' : 'false') ?>;
 			if (ignoreInitialVal==='maybe') {
 				// ignore the value iff the annotation being loaded is from someone other than the current user
-				ignoreInitialVal = ($(item).find('input.reconcileduser').eq(0).val() != "<?= $u ?>");
+				ignoreInitialVal = ($(item).find('input.usingCurrentVersionThisUser').val()!=='true');
+//$('textarea.comment').val($(item).find('input.reconcileduser').eq(0).val());
 			}
 			
 			// N.B. If ignoring only PSST annotations, after deserialize(true) is called 
@@ -2762,6 +2765,12 @@ function doSubmit() {
 <input type="hidden" name="split[]" value="<?= $s['split'] ?>" />
 <input type="hidden" name="reconciled[<?= $I ?>][0]" class="reconcileduser" value="<?= $s['reconciled'][0] ?>" disabled="<?= ($reconcile) ? 'false' : 'disabled' ?>" />
 <input type="hidden" name="reconciledtime[<?= $I ?>][0]" value="<?= $s['reconciledtime'][0] ?>" />
+<? /** usingCurrentVersionThisUser: "true" iff no other user's annotation actually factors into what is initially displayed 
+for this sentence (empty otherwise). This could be because no reconcile[] option was used, or no matching other user 
+has annotated this sentence, or (with a new=^... option) the current user's annotation is more recent. 
+Note that with the reconcile[] option, reconciled[][0] will be set to the matching user even if 
+that user's annotation is not ultimately used. */ ?>
+<input type="hidden" name="usingCurrentVersionThisUser[<?= $I ?>]" class="usingCurrentVersionThisUser" value="<?= $s['usingCurrentVersionThisUser'] ?>" />
 <? if (count($s['reconciled'])>1) { ?>
 <input type="hidden" name="reconciled[<?= $I ?>][1]" value="<?= $s['reconciled'][count($s['reconciled'])-1] ?>" />
 <input type="hidden" name="reconciledtime[<?= $I ?>][1]" value="<?= $s['reconciledtime'][count($s['reconciledtime'])-1] ?>" />
