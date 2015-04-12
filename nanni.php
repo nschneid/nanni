@@ -49,6 +49,9 @@ div.item { max-width: 40em; margin-left: auto; margin-right: auto; }
 .wlu1 { border-bottom: solid 2px #093; }
 .wlu0 { border-bottom: solid 2px #33c; }
 .note:default { color: #ccc; }
+
+input:not(:disabled).unsuggested-label { background-color: #ff7; }	/* there are suggestions for this token, but the value is not one of them */
+
 input[type=submit] { height: 3em; width: 65%; }
 input.btnprev,input.btnnext { height: 3em; width: 15%; }
 input[type=submit]:hover:not([disabled]),input.btnprev:hover:not([disabled]),input.btnnext:hover:not([disabled]) { background-color: #333; color: #eee; }
@@ -2198,6 +2201,13 @@ ChunkLabelAnnotator.prototype.identifyTargets = function() {
 	
 		a.validate = function () {
 			var v = this.getValue();
+
+<? if (!$readonly) { ?>
+			if (v && this.toplabels && this.toplabels.length>0) {
+				$(this.target).toggleClass("unsuggested-label", ($.inArray(v, this.toplabels)===-1));
+			}
+<? } ?>
+
 			var theactor = this;
 			var errstatus = function() {
 				if (v.trim()==="") {
@@ -2296,8 +2306,9 @@ ChunkLabelAnnotator.prototype.validate = function() {
 	$.each(this.actors, function (j, a) {
 		a.validate();
 		var tag = a.getValue();
-		if (tag!=='' && a.submittable)	// don't include empty tags
+		if (tag!=='' && a.submittable) {	// don't include empty tags
 			lbls[a.tokenOffset] = $(a.word).text() + '|' + (tag || $(a.target).attr("placeholder") || '');
+		}
 	});
 	$(this.target).val($.toJSON(lbls));
 }
