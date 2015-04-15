@@ -1801,9 +1801,9 @@ function getTooltip(a, lbl) {	// given an Actor and a supersense label, return t
 		else
 			return a.labeldescriptions[lbl];
 	}
-	else {
-		return "";
-	}
+	else if (a.labeldescriptions && a.labeldescriptions[lbl]!==undefined)
+		return a.labeldescriptions[lbl];
+	return "";
 }
 TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 	var a = new Actor(this);
