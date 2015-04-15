@@ -300,6 +300,13 @@ else {
 
 }
 
+function removeTrailingQMark($s) {
+	$l = strlen($s);
+	if (strpos($s, '|')<$l-2 && $s{$l-1}=='?') {	// tag (following "|") is more than one character, and ends in "?"
+		return substr($s, 0, $l-1);
+	}
+	return $s;
+}
 
 function noBacktick($s) {
 	return (strpos($s, '`')===false);
@@ -520,8 +527,8 @@ if ($iFrom>-1) {
 							$iaa[$userId]["interpF_alpha=$alpha"] = $alpha*$iaa[$userId]['sF'] + (1.0-$alpha)*$iaa[$userId]['swF'];
 							
 							if ($hasChkLbls && $hasChkLbls2) {	// IAA for labels
-								$lbls1 = $infoJ['chklbls'];
-								$lbls2 = $infoJ2['chklbls'];
+								$lbls1 = array_map("removeTrailingQMark", $infoJ['chklbls']);
+								$lbls2 = array_map("removeTrailingQMark", $infoJ2['chklbls']);
 								$lbls1Only = array_diff_assoc($lbls1, $lbls2);
 								$lbls2Only = array_diff_assoc($lbls2, $lbls1);
 								$iaa[$userId]['lcommon'] += count($lbls1) - count($lbls1Only);
