@@ -321,6 +321,145 @@ function notNounOrVerbSST($s) {
 	return true;
 }
 
+function iaa_counts($infoJ, $infoJ2, $userId, &$iaa) {
+	$hasChkLbls = ($infoJ['chklbls']!==null) ? true : false;
+	$hasChkLbls2 = ($infoJ2['chklbls']!==null) ? true : false;
+
+	$sgroups1 = $infoJ['sgroups'];
+	$sgroups2 = $infoJ2['sgroups'];
+	$wgroups1 = $infoJ['wgroups'];
+	$wgroups2 = $infoJ2['wgroups'];
+	
+	// strong links: pairwise consecutive (not necessarily contiguous) group members
+	$slinks1 = array();
+	$slinks2 = array();
+	foreach ($sgroups1 as $group) {
+		for ($i=1; $i<count($group); $i++)
+			$slinks1[$group[$i-1]] = $group[$i];
+	}
+	foreach ($sgroups2 as $group) {
+		for ($i=1; $i<count($group); $i++)
+			$slinks2[$group[$i-1]] = $group[$i];
+	}
+	
+	// weak links
+	$wlinks1 = array();
+	$wlinks2 = array();
+	
+	foreach ($wgroups1 as $group) {
+		for ($i=1; $i<count($group); $i++) {
+			if ($slinks1[$group[$i-1]]!==$group[$i])
+				$wlinks1[$group[$i-1]] = $group[$i];
+		}
+	}
+	foreach ($wgroups2 as $group) {
+		for ($i=1; $i<count($group); $i++) {
+			if ($slinks2[$group[$i-1]]!==$group[$i]) {
+				$wlinks2[$group[$i-1]] = $group[$i];
+			}
+		}
+	}
+	
+	// strong+weak links
+	$swlinks1 = $slinks1;
+	$swlinks2 = $slinks2;
+	foreach ($wlinks1 as $a => $b) {
+		$swlinks1[$a] = $b;
+	}
+	foreach ($wlinks2 as $a => $b) {
+		$swlinks2[$a] = $b;
+	}
+	
+	
+	
+	/*
+	// reconcile weak links: include as link unless the other annotator had neither strong nor weak link
+	$links1 = $slinks1;
+	$links2 = $slinks2;
+	
+	foreach ($wlinks1 as $a => $b) {
+		if ($wlinks2[$a]===$b) {	// both annotators have this weak link
+			$links1[$a] = $b;
+			$links2[$a] = $b;
+		}
+		else if ($links2[$a]===$b) {	// annotator 2 has this as a strong link
+			$links1[$a] = $b;
+		}
+	}
+	foreach ($wlinks2 as $a => $b) {
+		if ($links1[$a]===$b) {	// annotator 1 has this as a strong or weak link
+			$links2[$a] = $b;
+		}
+	}
+	*/
+	
+	
+	
+	$sgroups1J = array_map('json_encode',$infoJ['sgroups']);
+	$sgroups2J = array_map('json_encode',$infoJ2['sgroups']);
+	$wgroups1J = array_map('json_encode',$infoJ['wgroups']);
+	$wgroups2J = array_map('json_encode',$infoJ2['wgroups']);
+	$diff1 = array_diff($sgroups1J,$sgroups2J);
+	$diff2 = array_diff($sgroups2J,$sgroups1J);
+	$ndiff = count($diff1)+count($diff2);
+	//$iaa[null] += count($infoJ['sgroups']);
+	
+	if (!array_key_exists($userId, $iaa[null]))
+		$iaa[null][$userId] = array('s' => 0, 'sw' => 0);
+	$iaa[null][$userId]['s'] += count($slinks1);
+	$iaa[null][$userId]['sw'] += count($swlinks1);
+	if (!array_key_exists($userId, $iaa))
+		$iaa[$userId] = array('stotal' => 0, 'scommon' => 0, 'swtotal' => 0, 'swcommon' => 0, 
+			'sP' => 0, 'sR' => 0, 'sF' => 0, 'swP' => 0, 'swR' => 0, 'swF' => 0);
+	//$iaa[$userId]['total'] += count($infoJ2['sgroups']);
+	//$iaa[$userId]['common'] += count($infoJ2['sgroups']) - count($diff2);
+	$iaa[$userId]['stotal'] += count($slinks2);
+	$iaa[$userId]['swtotal'] += count($swlinks2);
+	
+	$iaa[$userId]['scommon'] += count($slinks2) - count(array_diff($slinks2,$slinks1));
+	$iaa[$userId]['swcommon'] += count($swlinks2) - count(array_diff($swlinks2,$swlinks1));
+	
+	$iaa[$userId]['sP'] = $iaa[$userId]['scommon']/$iaa[null][$userId]['s'];
+	$iaa[$userId]['sR'] = $iaa[$userId]['scommon']/$iaa[$userId]['stotal'];
+	$iaa[$userId]['sF'] = 2*$iaa[$userId]['sP']*$iaa[$userId]['sR']/($iaa[$userId]['sP']+$iaa[$userId]['sR']);
+	
+	$iaa[$userId]['swP'] = $iaa[$userId]['swcommon']/$iaa[null][$userId]['sw'];
+	$iaa[$userId]['swR'] = $iaa[$userId]['swcommon']/$iaa[$userId]['swtotal'];
+	$iaa[$userId]['swF'] = 2*$iaa[$userId]['swP']*$iaa[$userId]['swR']/($iaa[$userId]['swP']+$iaa[$userId]['swR']);
+	
+	$alpha = 0.5;
+	$iaa[$userId]["interpF_alpha=$alpha"] = $alpha*$iaa[$userId]['sF'] + (1.0-$alpha)*$iaa[$userId]['swF'];
+	
+	if ($hasChkLbls && $hasChkLbls2) {	// IAA for labels
+		$lbls1 = array_map("removeTrailingQMark", $infoJ['chklbls']);
+		$lbls2 = array_map("removeTrailingQMark", $infoJ2['chklbls']);
+		$lbls1Only = array_diff_assoc($lbls1, $lbls2);
+		$lbls2Only = array_diff_assoc($lbls2, $lbls1);
+		$iaa[$userId]['lcommon'] += count($lbls1) - count($lbls1Only);
+		$iaa[$userId]['ltotal'] += count(array_intersect_key($lbls1,$lbls2));
+		$iaa[$userId]['lA'] = $iaa[$userId]['lcommon'] / $iaa[$userId]['ltotal'];
+		
+		$lbls1 = array_filter($lbls1, "noBacktick");
+		$lbls2 = array_filter($lbls2, "noBacktick");
+		$lbls1Only = array_diff_assoc($lbls1, $lbls2);
+		$lbls2Only = array_diff_assoc($lbls2, $lbls1);
+		$iaa[$userId]['lcommonNoBacktick'] += count($lbls1) - count($lbls1Only);
+		$iaa[$userId]['ltotalNoBacktick'] += count(array_intersect_key($lbls1,$lbls2));
+		$iaa[$userId]['lANoBacktick'] = $iaa[$userId]['lcommonNoBacktick'] / $iaa[$userId]['ltotalNoBacktick'];
+		
+		$lbls1 = array_filter($lbls1, "notNounOrVerbSST");
+		$lbls2 = array_filter($lbls2, "notNounOrVerbSST");
+		$lbls1Only = array_diff_assoc($lbls1, $lbls2);
+		$lbls2Only = array_diff_assoc($lbls2, $lbls1);
+		$iaa[$userId]['lcommonPSST'] += count($lbls1) - count($lbls1Only);
+		$iaa[$userId]['ltotalPSST'] += count(array_intersect_key($lbls1,$lbls2));
+		$iaa[$userId]['lAPSST'] = $iaa[$userId]['lcommonPSST'] / $iaa[$userId]['ltotalPSST'];
+	}
+	
+	return $ndiff;
+}
+
+
 if ($iFrom>-1) {
 	
 	// TODO: pagination
@@ -417,141 +556,23 @@ if ($iFrom>-1) {
 						$infoJ2 = json_decode(str_replace("\\'", "'", $parts[count($parts)-3]), true);
 						$hasChkLbls2 = ($infoJ2['chklbls']!==null) ? true : false;
 
-						if ($infoJ===null || (count($infoJ['sgroups'])==0 && count($infoJ2['sgroups'])==0 && count($infoJ['wgroups'])==0 && count($infoJ2['wgroups'])==0)) {
+						if (false) { //$infoJ===null || (count($infoJ['sgroups'])==0 && count($infoJ2['sgroups'])==0 && count($infoJ['wgroups'])==0 && count($infoJ2['wgroups'])==0)) {
 							$ndiff = '';
 						}
 						else {
-							$sgroups1 = $infoJ['sgroups'];
-							$sgroups2 = $infoJ2['sgroups'];
-							$wgroups1 = $infoJ['wgroups'];
-							$wgroups2 = $infoJ2['wgroups'];
-							
-							// strong links: pairwise consecutive (not necessarily contiguous) group members
-							$slinks1 = array();
-							$slinks2 = array();
-							foreach ($sgroups1 as $group) {
-								for ($i=1; $i<count($group); $i++)
-									$slinks1[$group[$i-1]] = $group[$i];
-							}
-							foreach ($sgroups2 as $group) {
-								for ($i=1; $i<count($group); $i++)
-									$slinks2[$group[$i-1]] = $group[$i];
-							}
-							
-							// weak links
-							$wlinks1 = array();
-							$wlinks2 = array();
-							
-							foreach ($wgroups1 as $group) {
-								for ($i=1; $i<count($group); $i++) {
-									if ($slinks1[$group[$i-1]]!==$group[$i])
-										$wlinks1[$group[$i-1]] = $group[$i];
-								}
-							}
-							foreach ($wgroups2 as $group) {
-								for ($i=1; $i<count($group); $i++) {
-									if ($slinks2[$group[$i-1]]!==$group[$i]) {
-										$wlinks2[$group[$i-1]] = $group[$i];
-									}
-								}
-							}
-							
-							// strong+weak links
-							$swlinks1 = $slinks1;
-							$swlinks2 = $slinks2;
-							foreach ($wlinks1 as $a => $b) {
-								$swlinks1[$a] = $b;
-							}
-							foreach ($wlinks2 as $a => $b) {
-								$swlinks2[$a] = $b;
-							}
-							
-							
-							
-							/*
-							// reconcile weak links: include as link unless the other annotator had neither strong nor weak link
-							$links1 = $slinks1;
-							$links2 = $slinks2;
-							
-							foreach ($wlinks1 as $a => $b) {
-								if ($wlinks2[$a]===$b) {	// both annotators have this weak link
-									$links1[$a] = $b;
-									$links2[$a] = $b;
-								}
-								else if ($links2[$a]===$b) {	// annotator 2 has this as a strong link
-									$links1[$a] = $b;
-								}
-							}
-							foreach ($wlinks2 as $a => $b) {
-								if ($links1[$a]===$b) {	// annotator 1 has this as a strong or weak link
-									$links2[$a] = $b;
-								}
-							}
-							*/
-							
-							
-							
-							$sgroups1J = array_map('json_encode',$infoJ['sgroups']);
-							$sgroups2J = array_map('json_encode',$infoJ2['sgroups']);
-							$wgroups1J = array_map('json_encode',$infoJ['wgroups']);
-							$wgroups2J = array_map('json_encode',$infoJ2['wgroups']);
-							$diff1 = array_diff($sgroups1J,$sgroups2J);
-							$diff2 = array_diff($sgroups2J,$sgroups1J);
-							$ndiff = count($diff1)+count($diff2);
-							//$iaa[null] += count($infoJ['sgroups']);
-							
-							if (!array_key_exists($userId, $iaa[null]))
-								$iaa[null][$userId] = array('s' => 0, 'sw' => 0);
-							$iaa[null][$userId]['s'] += count($slinks1);
-							$iaa[null][$userId]['sw'] += count($swlinks1);
-							if (!array_key_exists($userId, $iaa))
-								$iaa[$userId] = array('stotal' => 0, 'scommon' => 0, 'swtotal' => 0, 'swcommon' => 0, 
-									'sP' => 0, 'sR' => 0, 'sF' => 0, 'swP' => 0, 'swR' => 0, 'swF' => 0);
-							//$iaa[$userId]['total'] += count($infoJ2['sgroups']);
-							//$iaa[$userId]['common'] += count($infoJ2['sgroups']) - count($diff2);
-							$iaa[$userId]['stotal'] += count($slinks2);
-							$iaa[$userId]['swtotal'] += count($swlinks2);
-							
-							$iaa[$userId]['scommon'] += count($slinks2) - count(array_diff($slinks2,$slinks1));
-							$iaa[$userId]['swcommon'] += count($swlinks2) - count(array_diff($swlinks2,$swlinks1));
-							
-							$iaa[$userId]['sP'] = $iaa[$userId]['scommon']/$iaa[null][$userId]['s'];
-							$iaa[$userId]['sR'] = $iaa[$userId]['scommon']/$iaa[$userId]['stotal'];
-							$iaa[$userId]['sF'] = 2*$iaa[$userId]['sP']*$iaa[$userId]['sR']/($iaa[$userId]['sP']+$iaa[$userId]['sR']);
-							
-							$iaa[$userId]['swP'] = $iaa[$userId]['swcommon']/$iaa[null][$userId]['sw'];
-							$iaa[$userId]['swR'] = $iaa[$userId]['swcommon']/$iaa[$userId]['swtotal'];
-							$iaa[$userId]['swF'] = 2*$iaa[$userId]['swP']*$iaa[$userId]['swR']/($iaa[$userId]['swP']+$iaa[$userId]['swR']);
-							
-							$alpha = 0.5;
-							$iaa[$userId]["interpF_alpha=$alpha"] = $alpha*$iaa[$userId]['sF'] + (1.0-$alpha)*$iaa[$userId]['swF'];
-							
-							if ($hasChkLbls && $hasChkLbls2) {	// IAA for labels
-								$lbls1 = array_map("removeTrailingQMark", $infoJ['chklbls']);
-								$lbls2 = array_map("removeTrailingQMark", $infoJ2['chklbls']);
-								$lbls1Only = array_diff_assoc($lbls1, $lbls2);
-								$lbls2Only = array_diff_assoc($lbls2, $lbls1);
-								$iaa[$userId]['lcommon'] += count($lbls1) - count($lbls1Only);
-								$iaa[$userId]['ltotal'] += count(array_intersect_key($lbls1,$lbls2));
-								$iaa[$userId]['lA'] = $iaa[$userId]['lcommon'] / $iaa[$userId]['ltotal'];
-								
-								$lbls1 = array_filter($lbls1, "noBacktick");
-								$lbls2 = array_filter($lbls2, "noBacktick");
-								$lbls1Only = array_diff_assoc($lbls1, $lbls2);
-								$lbls2Only = array_diff_assoc($lbls2, $lbls1);
-								$iaa[$userId]['lcommonNoBacktick'] += count($lbls1) - count($lbls1Only);
-								$iaa[$userId]['ltotalNoBacktick'] += count(array_intersect_key($lbls1,$lbls2));
-								$iaa[$userId]['lANoBacktick'] = $iaa[$userId]['lcommonNoBacktick'] / $iaa[$userId]['ltotalNoBacktick'];
-								
-								$lbls1 = array_filter($lbls1, "notNounOrVerbSST");
-								$lbls2 = array_filter($lbls2, "notNounOrVerbSST");
-								$lbls1Only = array_diff_assoc($lbls1, $lbls2);
-								$lbls2Only = array_diff_assoc($lbls2, $lbls1);
-								$iaa[$userId]['lcommonPSST'] += count($lbls1) - count($lbls1Only);
-								$iaa[$userId]['ltotalPSST'] += count(array_intersect_key($lbls1,$lbls2));
-								$iaa[$userId]['lAPSST'] = $iaa[$userId]['lcommonPSST'] / $iaa[$userId]['ltotalPSST'];
+							$ndiff = iaa_counts($infoJ, $infoJ2, $userId, $iaa);
+						}
+						
+						// note: we won't get here if the second of the reconciled users is the current user ($u)
+						if (isset($_REQUEST['reconcile']) && count($_REQUEST['reconcile'])==2 && $userId=='@' . $_REQUEST['reconcile'][1]) {
+							foreach (get_key_values(get_user_dir($_REQUEST['reconcile'][0]) . "/$split.nanni", $sentId) as $k => $data3) {
+								$parts3 = explode("\t", $data3);
+								$infoJ3 = json_decode(str_replace("\\'", "'", $parts3[count($parts3)-3]), true);
+								iaa_counts($infoJ3, $infoJ2, '@' . $_REQUEST['reconcile'][0] . ' ~ ' . $userId, $iaa);
 							}
 						}
+						
+						
 
 						$anno = htmlspecialchars($parts[count($parts)-2]);
 						$note = htmlspecialchars($parts[count($parts)-1]);
