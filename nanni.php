@@ -2772,7 +2772,11 @@ function doSubmit() {
 	return ann_submit();
 }
 </script>
-<title>Multiword Expression Annotation: #<?= $iFrom ?> in <?= (isset($query)) ? $query : $split ?> (<?= $_SERVER['REMOTE_USER'] ?> as <?= $u ?>)</title>
+<title><?
+if ($nsst || $vsst) echo 'Supersense';
+else if ($psst) echo 'Preposition Supersense';
+else echo 'Multiword Expression';
+?> Annotation: #<?= $iFrom ?> in <?= (isset($query)) ? $query : $split ?> (<?= $_SERVER['REMOTE_USER'] ?> as <?= $u ?>)</title>
 </head>
 <body<?= ($embedded) ? ' class="embedded"' : '' ?>>
 
