@@ -438,6 +438,7 @@ function iaa_counts($infoJ, $infoJ2, $userId, &$iaa) {
 		$iaa[$userId]['lcommon'] += count($lbls1) - count($lbls1Only);
 		$iaa[$userId]['ltotal'] += count(array_intersect_key($lbls1,$lbls2));
 		$iaa[$userId]['lA'] = $iaa[$userId]['lcommon'] / $iaa[$userId]['ltotal'];
+		$ndiff += count($lbls1Only) + count($lbls2Only) - count(array_intersect_key($lbls1Only,$lbls2Only));	// count label differences (don't double-count if same token has different label)
 		
 		$lbls1 = array_filter($lbls1, "noBacktick");
 		$lbls2 = array_filter($lbls2, "noBacktick");
@@ -489,6 +490,7 @@ if ($iFrom>-1) {
 			if ($l >= $iFrom) {
 				if (($iTo>-1 && $l >= $iTo)) break;	// || $l >= ($iFrom+$perpage)) break;
 	
+				$rndiff = '';
 				$entry = htmlspecialchars($entry, ENT_QUOTES);	
 				$entry = explode("\t", $entry);
 				$sentId = $entry[0];
@@ -538,14 +540,16 @@ if ($iFrom>-1) {
 					$hasPlainQuestionMark = false;
 				}
 				
+			/** // I don't remember what this was actually for ***
 				// extra data for the sentence (if available)
 				if        (file_exists("$edir/$split.extra")) {
 					$e = get_key_value("$edir/$split.extra", $sentId);
 					if ($e===null) $e = '';
 				}
 				else $e = '';
+			*/
 				
-?><tr id="_<?= $sentId ?>"><th class="num" title="<?= $sentId ?>" id="n<?= $l ?>"><?= $l ?></th><td class="rawitem <?= $status ?><?= ($hasChkLbls) ? ' hasChkLbls' : '' ?>" title="<?= $tip ?>"><a href="<?= $annurl ?>"><?= $sent ?></a></td><td class="qmark"><?= ($hasQuestionLabel) ? '&#x2753;&#x2753;' : (($hasPlainQuestionMark) ? '&#x2753;' : '') ?></td><td class="note"><?= $note ?></td><td class="extra"><?= $e ?></td><td class="users"><?
+?><tr id="_<?= $sentId ?>"><th class="num" title="<?= $sentId ?>" id="n<?= $l ?>"><?= $l ?></th><td class="rawitem <?= $status ?><?= ($hasChkLbls) ? ' hasChkLbls' : '' ?>" title="<?= $tip ?>"><a href="<?= $annurl ?>"><?= $sent ?></a></td><td class="qmark"><?= ($hasQuestionLabel) ? '&#x2753;&#x2753;' : (($hasPlainQuestionMark) ? '&#x2753;' : '') ?></td><td class="note"><?= $note ?></td><? /*<td class="extra"><?= $e ?></td> */ ?><td class="users"><?
 					foreach (get_key_values("users/*/$split.nanni", $sentId) as $j => $data) {
 						$parts = explode("\t", $data);
 						$timestamp = intval($parts[1]);
@@ -568,7 +572,7 @@ if ($iFrom>-1) {
 							foreach (get_key_values(get_user_dir($_REQUEST['reconcile'][0]) . "/$split.nanni", $sentId) as $k => $data3) {
 								$parts3 = explode("\t", $data3);
 								$infoJ3 = json_decode(str_replace("\\'", "'", $parts3[count($parts3)-3]), true);
-								iaa_counts($infoJ3, $infoJ2, '@' . $_REQUEST['reconcile'][0] . ' ~ ' . $userId, $iaa);
+								$rndiff = iaa_counts($infoJ3, $infoJ2, '@' . $_REQUEST['reconcile'][0] . ' ~ ' . $userId, $iaa);
 							}
 						}
 						
@@ -582,7 +586,7 @@ if ($iFrom>-1) {
 						$status = ($timestamp<(mktime()-7*24*60*60)) ? 'sAnn' : (($timestamp<(mktime()-24*60*60)) ? 'sRecent7d' : 'sRecent1d');
 ?><span class="user usr<?= $userOffset ?> <?= $status ?><?= ($hasChkLbls2) ? ' hasChkLbls' : '' ?><?= ($note) ? ' hasnote' : '' ?>" title="<?= $tip ?>"><?= $userId ?></span><sub><?= $ndiff ?></sub> <?
 					}
-?></td></tr>
+?></td><td class="reconcile_ndiff"><?= $rndiff ?></td></tr>
 <?
 			}
 			$l++;
