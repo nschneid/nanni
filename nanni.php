@@ -370,7 +370,7 @@ if ($iFrom>-1) {
 						if ($v!==null) {
 							$parts = explode("\t", $v);
 							$tstamp = intval($parts[1]);
-							if (!$new || $reconcile===null || $tstamp >= $Atstamp || $tstamp >= $Btstamp) {
+							if (!$new || $reconcile===null || ($tstamp >= $Atstamp && $tstamp >= $Btstamp)) {
 								// use this user's current saved version
 								$sentdata['initval'] = htmlspecialchars($parts[count($parts)-2]);
 								$sentdata['note'] = htmlspecialchars($parts[count($parts)-1]);
