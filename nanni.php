@@ -1080,11 +1080,12 @@ PREPS_MASTER = ["2", "4", "a", "abaft", "aboard", "about", "above", "abreast", "
 	"under sentence of", "under the heel of", "up against", "up and down", "up before", "up for", 
 	"up to", "upward of", "upwards of", "vis a vis", "vis à vis", "vis - a - vis", "vis - à - vis", 
 	"with reference to", "with regard to", "with respect to", "with the exception of", 
-	"within sight of"];
+	"within sight of",
+	"rather then", "then"];
 PREP_SPECIAL_MW_BEGINNERS = ["a", "according", "all", "bare", "because", "but", "care", "complete", 
 "contrary", "courtesy", "depending", "due", "exclusive", "inclusive", "instead", 
 "irrespective", "less", "little", "more", "next", "nothing", "other", "outboard", "owing", 
-"preparatory", "previous", "prior", "pursuant", "regardless", "relative", "short", 
+"preparatory", "previous", "prior", "pursuant", "rather", "regardless", "relative", "short", 
 "subsequent", "such", "thanks", "this"];
 // removed "having" because it turns up false positives with "have to" (quasimodal)
 /* // Do not contain any single-word prepositions, therefore will not be matched:
@@ -1578,6 +1579,7 @@ PSST_LEX_LABEL_DESCRIPTIONS = buildTooltipStrings();
 // normalization/aliases
 // after buildTooltipStrings(), so OUT OF is correctly capitalized in examples whether filed under 'out' or 'out of'
 PSST_LABELS["2"] = PSST_LABELS["to"];
+PSST_LABELS["rather then"] = PSST_LABELS["rather than"];
 Object.keys(PSST_LEX_LABEL_DESCRIPTIONS).forEach(function (sst) {
 	if (PSST_LEX_LABEL_DESCRIPTIONS[sst]["to"]) 
 		PSST_LEX_LABEL_DESCRIPTIONS[sst]["2"] = PSST_LEX_LABEL_DESCRIPTIONS[sst]["to"];
@@ -1585,6 +1587,8 @@ Object.keys(PSST_LEX_LABEL_DESCRIPTIONS).forEach(function (sst) {
 		PSST_LEX_LABEL_DESCRIPTIONS[sst]["4"] = PSST_LEX_LABEL_DESCRIPTIONS[sst]["for"];
 	if (PSST_LEX_LABEL_DESCRIPTIONS[sst]["out of"])
 		PSST_LEX_LABEL_DESCRIPTIONS[sst]["out"] = PSST_LEX_LABEL_DESCRIPTIONS[sst]["out of"];
+	if (PSST_LEX_LABEL_DESCRIPTIONS[sst]["rather than"])
+		PSST_LEX_LABEL_DESCRIPTIONS[sst]["rather then"] = PSST_LEX_LABEL_DESCRIPTIONS[sst]["rather than"];
 });
 
 PSST_TOP_LABELS = {"about": ["Topic", "2DArea", "1DTrajectory", "Possessor", "Location", "Approximator"],
@@ -1679,9 +1683,10 @@ PSST_TOP_LABELS = {"about": ["Topic", "2DArea", "1DTrajectory", "Possessor", "Lo
     "without": ["Location", "Instrument", "Circumstance", "Attribute", "Accompanier"]
 };
 
-// normalization
+// normalization of aliases
 PSST_TOP_LABELS["2"] = PSST_TOP_LABELS["to"];
 PSST_TOP_LABELS["4"] = PSST_TOP_LABELS["for"];
+PSST_TOP_LABELS["rather then"] = PSST_TOP_LABELS["rather than"];
 PSST_TOP_LABELS["out"] = PSST_TOP_LABELS["out"].concat(PSST_TOP_LABELS["out of"]);
 
 SRIKUMAR_LABELS = ['Activity','Age','Agent','Attribute','Beneficiary','Cause','ClockTimeCxn','Co-Particiants','DeicticTime','Destination','Direction',
