@@ -1112,7 +1112,7 @@ PSST_LIST_OF_LABELS = ['1DTrajectory', '2DArea', '3DMedium', 'Accompanier', 'Act
     'Species', 'StartState', 'StartTime', 'State', 'Stimulus',
     'Superset', 'Temporal', 'Theme', 'Time', 'Topic', 'Transit',
     'Value', 'ValueComparison', 'Via', 'Whole', '`', '`d', '`i', '`a',
-    '`j', '`o', '?'];
+    '`j', '`o', '`r', '?'];
 
 PSST_SHORT_DEFS = {
     "1DTrajectory": "One-dimensional path that is the location traversed. {about, above, across, along, around, between, by, down, out of, over, past, round, through, up}", 
@@ -1786,7 +1786,8 @@ PSEUDOLABEL_DESCRIPTIONS = {'?': '(unsure; you can also tentatively specify one 
 		'`o': 'pronoun',
 		'`s': 'non-infinitival subordinator',
 		'`a': 'auxiliary',
-		'`j': 'adjectival'}
+		'`j': 'adjectival',
+		'`r': 'adverb'}
 
 function TokenLabelAnnotator(I, itemId) {
 	this._name = 'TokenLabelAnnotator';
