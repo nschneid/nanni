@@ -433,6 +433,7 @@ function iaa_counts($infoJ, $infoJ2, $userId, &$iaa) {
 	if ($hasChkLbls && $hasChkLbls2) {	// IAA for labels
 		$lbls1 = array_map("removeTrailingQMark", $infoJ['chklbls']);
 		$lbls2 = array_map("removeTrailingQMark", $infoJ2['chklbls']);
+		$bothlbled = array_intersect_key($lbls1,$lbls2);
 		$lbls1Only = array_diff_assoc($lbls1, $lbls2);
 		$lbls2Only = array_diff_assoc($lbls2, $lbls1);
 		$iaa[$userId]['lcommon'] += count($lbls1) - count($lbls1Only);
@@ -454,7 +455,11 @@ function iaa_counts($infoJ, $infoJ2, $userId, &$iaa) {
 		$lbls2Only = array_diff_assoc($lbls2, $lbls1);
 		$iaa[$userId]['lcommonPSST'] += count($lbls1) - count($lbls1Only);
 		$iaa[$userId]['ltotalPSST'] += count(array_intersect_key($lbls1,$lbls2));
+		$iaa[$userId]['ltotalPSST_either'] += count($lbls1 + $lbls2);
+		$iaa[$userId]['ltotalPSST_either_bothtagged'] += count(array_intersect_key($bothlbled, $lbls1 + $lbls2));	// effectively, don't count disagreements due to MWE differences
 		$iaa[$userId]['lAPSST'] = $iaa[$userId]['lcommonPSST'] / $iaa[$userId]['ltotalPSST'];
+		$iaa[$userId]['lAPSST_either'] = $iaa[$userId]['lcommonPSST'] / $iaa[$userId]['ltotalPSST_either'];
+		$iaa[$userId]['lAPSST_either_bothtagged'] = $iaa[$userId]['lcommonPSST'] / $iaa[$userId]['ltotalPSST_either_bothtagged'];
 	}
 	
 	return $ndiff;
