@@ -753,7 +753,7 @@ MWEAnnotator.prototype.isGrouped = function(tknOffset, strength) {
 }
 
 /* poses (optional): list of POSes for the sentence; 
-filterFxn (optional): function that must be true for some (word, POS) pair in the chunk 
+filterFxn (optional): function that must be true for the first or last (word, POS) pair in the chunk 
 for the chunk to be included 
 firstOnlyPlusWhitelist (optional): if an array, return false unless the first token in the chunk 
 is matched by filterFxn OR (when lowercased) by one of the words in the array. 
@@ -780,16 +780,20 @@ MWEAnnotator.prototype.isChunkBeginner = function(tknOffset, strength, poses, fi
 	var classes = ' '+thistok.attr("class");
 	var sb = wb = false;
 	if (strong && classes.indexOf(' slu')>-1) {
-		sb = $thisitem.find('.sent .w.slu'+thistok.data("slu")).eq(0).data("w");
+		var sel = '.sent .w.slu'+thistok.data("slu");
+		sb = $thisitem.find(sel).eq(0).data("w");
 		if (sb!=tknOffset) return false;
-		sb = ($thisitem.find('.sent .w.slu'+thistok.data("slu")).filter(function (j) {
+		// does filterFxn match first or last token in chunk?
+		sb = ($thisitem.find(sel+':first,'+sel+':last').filter(function (j) {
 				return (poses===null || filterFxn(getTok($(this).data("w")).text(), poses[$(this).data("w")]));
 			}).length>0);
 	}
 	if (weak && classes.indexOf(' wlu')>-1) {
-		wb = $thisitem.find('.sent .w.wlu'+thistok.data("wlu")).eq(0).data("w");
+		var sel = '.sent .w.wlu'+thistok.data("wlu");
+		wb = $thisitem.find(sel).eq(0).data("w");
 		if (wb!=tknOffset) return false;
-		wb = ($thisitem.find('.sent .w.wlu'+thistok.data("wlu")).filter(function (j) {
+		// does filterFxn match first or last token in chunk?
+		wb = ($thisitem.find(sel+':first,'+sel+':last').filter(function (j) {
 				return (poses===null || filterFxn(getTok($(this).data("w")).text(), poses[$(this).data("w")]));
 			}).length>0);
 	}
