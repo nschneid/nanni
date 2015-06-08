@@ -1081,10 +1081,10 @@ PREPS_MASTER = ["2", "4", "a", "abaft", "aboard", "about", "above", "abreast", "
 	"up to", "upward of", "upwards of", "vis a vis", "vis à vis", "vis - a - vis", "vis - à - vis", 
 	"with reference to", "with regard to", "with respect to", "with the exception of", 
 	"within sight of",
-	"rather then", "then"];
+	"rather then", "then", "too", "nothing but", "just about"];
 PREP_SPECIAL_MW_BEGINNERS = ["a", "according", "all", "bare", "because", "but", "care", "complete", 
 "contrary", "courtesy", "depending", "due", "exclusive", "inclusive", "instead", 
-"irrespective", "less", "little", "more", "next", "nothing", "other", "outboard", "owing", 
+"irrespective", "just", "less", "little", "more", "next", "nothing", "other", "outboard", "owing", 
 "preparatory", "previous", "prior", "pursuant", "rather", "regardless", "relative", "short", 
 "subsequent", "such", "thanks", "this"];
 // removed "having" because it turns up false positives with "have to" (quasimodal)
