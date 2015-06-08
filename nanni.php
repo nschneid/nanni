@@ -1085,7 +1085,7 @@ PREPS_MASTER = ["2", "4", "a", "abaft", "aboard", "about", "above", "abreast", "
 	"up to", "upward of", "upwards of", "vis a vis", "vis à vis", "vis - a - vis", "vis - à - vis", 
 	"with reference to", "with regard to", "with respect to", "with the exception of", 
 	"within sight of",
-	"rather then", "then", "too", "nothing but", "just about"];
+	"rather then", "then", "too", "nothing but", "just about", "in between"];
 PREP_SPECIAL_MW_BEGINNERS = ["a", "according", "all", "bare", "because", "but", "care", "complete", 
 "contrary", "courtesy", "depending", "due", "exclusive", "inclusive", "instead", 
 "irrespective", "just", "less", "little", "more", "next", "nothing", "other", "outboard", "owing", 
@@ -1611,6 +1611,8 @@ Object.keys(PSST_LEX_LABEL_DESCRIPTIONS).forEach(function (sst) {
 		PSST_LEX_LABEL_DESCRIPTIONS[sst]["2"] = PSST_LEX_LABEL_DESCRIPTIONS[sst]["to"];
 	if (PSST_LEX_LABEL_DESCRIPTIONS[sst]["for"])
 		PSST_LEX_LABEL_DESCRIPTIONS[sst]["4"] = PSST_LEX_LABEL_DESCRIPTIONS[sst]["for"];
+	if (PSST_LEX_LABEL_DESCRIPTIONS[sst]["between"])
+		PSST_LEX_LABEL_DESCRIPTIONS[sst]["in between"] = PSST_LEX_LABEL_DESCRIPTIONS[sst]["between"];
 	if (PSST_LEX_LABEL_DESCRIPTIONS[sst]["out of"])
 		PSST_LEX_LABEL_DESCRIPTIONS[sst]["out"] = PSST_LEX_LABEL_DESCRIPTIONS[sst]["out of"];
 	if (PSST_LEX_LABEL_DESCRIPTIONS[sst]["rather than"])
@@ -1723,6 +1725,7 @@ PSST_TOP_LABELS = {"about": ["Topic", "Attribute", "2DArea", "1DTrajectory", "Po
 // normalization of aliases
 PSST_TOP_LABELS["2"] = PSST_TOP_LABELS["to"];
 PSST_TOP_LABELS["4"] = PSST_TOP_LABELS["for"];
+PSST_TOP_LABELS["in between"] = PSST_TOP_LABELS["between"];
 PSST_TOP_LABELS["rather then"] = PSST_TOP_LABELS["rather than"];
 PSST_TOP_LABELS["out"] = PSST_TOP_LABELS["out"].concat(PSST_TOP_LABELS["out of"]);
 
