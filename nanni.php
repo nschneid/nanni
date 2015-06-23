@@ -1109,12 +1109,12 @@ PSST_LIST_OF_LABELS = ['1DTrajectory', '2DArea', '3DMedium', 'Accompanier', 'Act
     'Course', 'Creator', 'DeicticTime', 'Destination', 'Direction',
     'Donor/Speaker', 'Duration', 'Elements', 'EndState', 'EndTime',
     'Experiencer', 'Explanation', 'Extent', 'Frequency', 'Function',
-    'Goal', 'InitialLocation', 'Instrument', 'Location', 'Locus',
+    'Goal', 'InitialLocation', 'Instance', 'Instrument', 'Location', 'Locus',
     'Manner', 'Material', 'Means', 'Other', 'Partitive', 'Patient',
     'Possessor', 'ProfessionalAspect', 'Purpose', 'Recipient',
     'Reciprocation', 'RelativeTime', 'Scalar/Rank', 'Source',
     'Species', 'StartState', 'StartTime', 'State', 'Stimulus',
-    'Superset', 'Temporal', 'Theme', 'Time', 'Topic', 'Transit',
+    'Superset', 'Temporal', 'Theme', 'Time', 'Topic', 'Transit', 'Quantity',
     'Value', 'ValueComparison', 'Via', 'Whole', '`', '`d', '`i', '`a',
     '`j', '`o', '`r', '?'];
 
@@ -1617,6 +1617,8 @@ Object.keys(PSST_LEX_LABEL_DESCRIPTIONS).forEach(function (sst) {
 		PSST_LEX_LABEL_DESCRIPTIONS[sst]["out"] = PSST_LEX_LABEL_DESCRIPTIONS[sst]["out of"];
 	if (PSST_LEX_LABEL_DESCRIPTIONS[sst]["rather than"])
 		PSST_LEX_LABEL_DESCRIPTIONS[sst]["rather then"] = PSST_LEX_LABEL_DESCRIPTIONS[sst]["rather than"];
+	if (PSST_LEX_LABEL_DESCRIPTIONS[sst]["through"])
+		PSST_LEX_LABEL_DESCRIPTIONS[sst]["thru"] = PSST_LEX_LABEL_DESCRIPTIONS[sst]["through"];
 });
 
 PSST_TOP_LABELS = {"about": ["Topic", "Attribute", "2DArea", "1DTrajectory", "Possessor", "Location", "Approximator"],
@@ -1728,6 +1730,7 @@ PSST_TOP_LABELS["4"] = PSST_TOP_LABELS["for"];
 PSST_TOP_LABELS["in between"] = PSST_TOP_LABELS["between"];
 PSST_TOP_LABELS["rather then"] = PSST_TOP_LABELS["rather than"];
 PSST_TOP_LABELS["out"] = PSST_TOP_LABELS["out"].concat(PSST_TOP_LABELS["out of"]);
+PSST_TOP_LABELS["thru"] = PSST_TOP_LABELS["through"];
 
 SRIKUMAR_LABELS = ['Activity','Age','Agent','Attribute','Beneficiary','Cause','ClockTimeCxn','Co-Particiants','DeicticTime','Destination','Direction',
 				   'Duration','EndState','EndTime','Experiencer','Frequency','Instrument','Location','Manner','MediumOfCommunication','Numeric',
