@@ -60,6 +60,7 @@ input[type=submit]:focus:not([disabled]),input.btnprev:focus:not([disabled]),inp
 textarea[readonly],input[readonly] { border: none; }
 
 .outdated { color: #ccc; }
+.trial { font-style: italic; }
 
 body.embedded p { margin-top: 0; margin-bottom: 0; }
 body.embedded textarea { background-color: transparent; }
@@ -153,6 +154,9 @@ $noinstr = array_key_exists('noinstr', $_REQUEST);
 $nooutdated = array_key_exists('nooutdated', $_REQUEST);
 $readonly = array_key_exists('readonly', $_REQUEST);
 
+$sFlags = '';
+if (isset($_REQUEST['trial']))
+	$sFlags .= ' trial;';
 
 if (!array_key_exists('from', $_REQUEST)) {	// demo mode
 	$iFrom = -1;
@@ -205,7 +209,8 @@ if ($iFrom>-1) {
 				$avals .= '  "beforeVExpand": "' .  preg_replace('/\s+/', ' ', trim(addslashes($_REQUEST['beforeVExpand'][$I]))) . '",';
 			if (isset($_REQUEST['reconciled'][$I])) {
 				if ($reconcile[0]=='^') {	
-					// most recent of the source versions being reconciled
+					// most recent of the source versions being reconciled, 
+					// EXCLUDING versions with the "trial" flag
 					$maxtstamp = -1;
 					foreach ($_REQUEST['reconciledtime'][$I] as $tstamp) {
 						if (intval($tstamp) > $maxtstamp)
@@ -216,6 +221,13 @@ if ($iFrom>-1) {
 					$Atstamp = -1;
 					foreach (get_key_values(get_user_dir('*') . "/$split.nanni", $sentId) as $data) {
 						$parts = explode("\t", $data);
+						$matches = array();
+						// exclude annotations with the "trial" flag
+						if (preg_match('/"flags":[ ]*"([^"]*)"/', $parts[4], $matches)==1) {
+							$data_flags = explode(';', preg_replace('/; /', ';', $matches[1]));
+							if (array_search('trial', $data_flags)!==false)
+								continue;
+						}
 						$tstamp = intval($parts[1]);
 						if ($tstamp > $Atstamp) {	// this is the newest so far
 							$A = substr($parts[2], 1);	// @user --[strip @]--> user
@@ -241,6 +253,8 @@ if ($iFrom>-1) {
 			$avals .= '  "usingCurrentVersionThisUser": "' . $_REQUEST['usingCurrentVersionThisUser'][$I] . '",';
 			if (isset($query))
 				$avals .= '  "query": "' . addslashes($query) . '",';
+			if ($_REQUEST['flags'][$I]!='')
+				$avals .= '  "flags": "' . addslashes($_REQUEST['flags'][$I]) . '",';
 			$chklbls = ($_REQUEST['chklbls']) ? $_REQUEST['chklbls'][$I] : '{}';
 			$val = $_REQUEST['loadtime'] . "\t" . mktime() . "\t@$u\t$ann\t{{$avals}   \"sgroups\": " . $_REQUEST['sgroups'][$I] . ",   \"wgroups\": " . $_REQUEST['wgroups'][$I] . (($prep) ? ",   \"preps\": " . $_REQUEST['preps'][$I] : '') . (($nsst || $vsst || $psst) ? ",   \"chklbls\": $chklbls" : '') . ",   \"url\": \"" . $_SERVER["SERVER_NAME"].$_SERVER["REQUEST_URI"] . "\",   \"session\": \"" . session_id() . "\",  \"authuser\": \"$user\"}\t$mwe\t$note\n";
 			
@@ -317,6 +331,13 @@ if ($iFrom>-1) {
 						$Atstamp = -1;
 						foreach (get_key_values(get_user_dir('*') . "/$split.nanni", $sentId) as $data) {
 							$parts = explode("\t", $data);
+							$matches = array();
+							// exclude annotations with the "trial" flag
+							if (preg_match('/"flags":[ ]*"([^"]*)"/', $parts[4], $matches)==1) {
+								$data_flags = explode(';', preg_replace('/; /', ';', $matches[1]));
+								if (array_search('trial', $data_flags)!==false)
+									continue;
+							}
 							$tstamp = intval($parts[1]);
 							if ($tstamp > $Atstamp) {	// this is the newest so far
 								$provisionalA = substr($parts[2], 1);	// @user --[strip @]--> user
@@ -2937,6 +2958,7 @@ that user's annotation is not ultimately used. */ ?>
 <input type="hidden" name="initnote[]" class="initnote" value="<?= $s['note'] ?>" />
 <input type="hidden" name="beforeVExpand[]" class="beforeVExpand" value="" />
 <input type="hidden" name="pos[]" class="pos" value="<?= $s['pos'] ?>" />
+<input type="hidden" name="flags[]" class="flags" value="<?= trim($sFlags) ?>" />
 <input type="hidden" name="chklbls[]" class="chklbls" value="<?= $s['chklbls'] ?>" />
 <p id="sent_<?= $sid ?>" class="sent"><? if (!($versions && count($s['versions'])==0)) {
 	echo $s['sentence'];
@@ -2985,16 +3007,27 @@ function versioncmp($a, $b) {
 		$noteS = htmlspecialchars($parts[count($parts)-1]);
 		$titleS = $mweS . (($noteS) ? "\n\n$noteS" : '');
 		
+		// load flags
+		$verMatches = array();
+		$verFlags = array();
+		$verIsTrial = false;
+		$verFlagCls = '';
+		if (preg_match('/"flags":[ ]*"([^"]*)"/', $parts[4], $verMatches)==1) {
+			$verFlags = explode(';', str_replace(' ', '-', preg_replace('/; /', ';', $verMatches[1])));
+			$verFlagCls = implode(' ', $verFlags);
+		}
+		
 		// filter all but the most recent version from each user
 		if ($nooutdated && isset($users[$usr])) { continue; }
 
 		
 		echo '<option value="' . htmlspecialchars($ver) . '" title="' . $titleS . '"';
 		if (isset($users[$usr])) {
-			echo ' class="outdated"';
+			echo ' class="outdated ' . $verFlagCls . '"';
 		}
 		else {
 			$users[$usr] = true;
+			echo ' class="' . $verFlagCls . '"';
 		}
 		echo '>' . str_replace(" ", "&nbsp;", str_pad($nver-$iver, strlen(strval($nver)), " ", STR_PAD_LEFT)) . ' &nbsp; ' . date('r', intval($parts[1])) . ' &nbsp; ' . htmlspecialchars($usr) . '</option>';
 		$iver++;
