@@ -1897,17 +1897,24 @@ PSEUDOLABEL_DESCRIPTIONS = {'?': '(unsure; you can also tentatively specify one 
 		'`i': "infinitival TO or FOR (with no additional semantics)",
 		'`d': 'discourse',
 		'`o': 'pronoun',
-		'`s': 'non-infinitival subordinator',
+		'`n': 'common noun',
+		'`^': 'proper noun',
+		'`p': 'preposition or subordinator',
 		'`a': 'auxiliary',
+		'`v': 'main verb',
 		'`j': 'adjectival',
-		'`r': 'adverb'}
+		'`r': 'adverb'};
+PSEUDOLABEL_SHORTCUTS = {};
+Object.keys(PSEUDOLABEL_DESCRIPTIONS).forEach(function (x) {
+	PSEUDOLABEL_SHORTCUTS[x] = x;
+});
 
 function TokenLabelAnnotator(I, itemId) {
 	this._name = 'TokenLabelAnnotator';
 	this.labelShortcuts = $.extend({}, 
 		<? if ($nsst) { ?>N_LABEL_SHORTCUTS, <? } ?>
 		<? if ($vsst) { ?>V_LABEL_SHORTCUTS, <? } ?>
-		GENERAL_LABEL_SHORTCUTS);
+		PSEUDOLABEL_SHORTCUTS);
 	<? if ($psst) { ?>
 	this.labels = PSST_LIST_OF_LABELS;
 	this.lexlabeldescriptions = PSST_LEX_LABEL_DESCRIPTIONS;
@@ -2422,17 +2429,17 @@ ChunkLabelAnnotator.prototype.updateTargets = function(updateInfo) {
 					// this chunk has BOTH a noun and a verb, so allow either kind of label
 					a.populateLabels(ALL_LABEL_SHORTCUTS);
 				else // this chunk has only verbs
-					a.populateLabels($.extend({}, V_LABEL_SHORTCUTS, GENERAL_LABEL_SHORTCUTS));
+					a.populateLabels($.extend({}, V_LABEL_SHORTCUTS, PSEUDOLABEL_SHORTCUTS));
 				a.validate();	// if the noun label was saved, remove the invalid flag
 			}
 			else if (theann.filterFxn==ChunkLabelAnnotator.prototype.NV_FILTER) {
 				// we are labeling nouns and verbs
 				if (!AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, ChunkLabelAnnotator.prototype.N_FILTER))
 					// but this chunk contains no nouns: limit to verbs
-					a.populateLabels($.extend({}, V_LABEL_SHORTCUTS, GENERAL_LABEL_SHORTCUTS));
+					a.populateLabels($.extend({}, V_LABEL_SHORTCUTS, PSEUDOLABEL_SHORTCUTS));
 				else if (!AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, ChunkLabelAnnotator.prototype.V_FILTER))
 					// but this chunk contains no verbs: limit to nouns
-					a.populateLabels($.extend({}, N_LABEL_SHORTCUTS, GENERAL_LABEL_SHORTCUTS));
+					a.populateLabels($.extend({}, N_LABEL_SHORTCUTS, PSEUDOLABEL_SHORTCUTS));
 				else // this chunk contains nouns and verbs
 					a.populateLabels(ALL_LABEL_SHORTCUTS);
 				a.validate();
@@ -2501,7 +2508,8 @@ ChunkLabelAnnotator.prototype.V_FILTER = function (word, pos) { return pos.match
 ChunkLabelAnnotator.prototype.NV_FILTER = function (word, pos) { return pos.match(/^(N|ADD|V)/); };
 ChunkLabelAnnotator.prototype.PREPS = ['of','to','for','by','with','from','at','over','out','about','in','on','off','as','down','under','above','across','after','against','ago','among','during','before','behind','below','beneath','beside','besides','between','beyond','away','back','into','near','since','until','together','toward','towards','apart','within','without'];
 ChunkLabelAnnotator.prototype.P_FILTER = function (word, pos) {	// should the given token be tagged as a preposition?
-	return pos.match(/^(RP|TO)/) || (pos.match(/^(IN|RB)/) && PREPS_MASTER.indexOf(word.toLowerCase())>-1);
+	// PRE is from Italian tagset
+	return pos.match(/^(RP|TO|PRE$)/) || (pos.match(/^(IN|RB)/) && PREPS_MASTER.indexOf(word.toLowerCase())>-1);
 }	// TODO: use multiword entries in PREPS_MASTER?
 <? if ($nsst || $vsst || $psst) { ?>
 ChunkLabelAnnotator.prototype.filterFxn = ChunkLabelAnnotator.prototype.<?= ($psst) ? 'P' : '' ?><?= ($nsst) ? 'N' : '' ?><?= ($vsst) ? 'V' : '' ?>_FILTER;
