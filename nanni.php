@@ -1137,8 +1137,7 @@ PSST_LIST_OF_LABELS = ['1DTrajectory', '2DArea', '3DMedium', 'Accompanier', 'Act
     'Reciprocation', 'RelativeTime', 'Scalar/Rank', 'Source',
     'Species', 'StartState', 'StartTime', 'State', 'Stimulus',
     'Superset', 'Temporal', 'Theme', 'Time', 'Topic', 'Transit',
-    'Value', 'ValueComparison', 'Via', 'Whole', '`', '`d', '`i', '`a',
-    '`j', '`o', '`r', '?'];
+    'Value', 'ValueComparison', 'Via', 'Whole'];
 
 PSST_SHORT_DEFS = {
     "1DTrajectory": "One-dimensional path that is the location traversed. {about, above, across, along, around, between, by, down, out of, over, past, round, through, up}", 
@@ -1893,6 +1892,7 @@ GENERAL_LABEL_SHORTCUTS = {'`': '`', '?': '?'};
 ALL_LABEL_SHORTCUTS = $.extend({}, N_LABEL_SHORTCUTS, V_LABEL_SHORTCUTS, GENERAL_LABEL_SHORTCUTS);
 
 PSEUDOLABEL_DESCRIPTIONS = {'?': '(unsure; you can also tentatively specify one or more possibilities by following them with ?)', 
+		'??': 'unintelligible',
 		'`': '(skip for now)',
 		'`i': "infinitival TO or FOR (with no additional semantics)",
 		'`d': 'discourse',
@@ -1905,8 +1905,10 @@ PSEUDOLABEL_DESCRIPTIONS = {'?': '(unsure; you can also tentatively specify one 
 		'`j': 'adjectival',
 		'`r': 'adverb'};
 PSEUDOLABEL_SHORTCUTS = {};
+PSEUDOLABEL_LIST = [];
 Object.keys(PSEUDOLABEL_DESCRIPTIONS).forEach(function (x) {
 	PSEUDOLABEL_SHORTCUTS[x] = x;
+	PSEUDOLABEL_LIST.push(x);
 });
 
 function TokenLabelAnnotator(I, itemId) {
@@ -1916,7 +1918,7 @@ function TokenLabelAnnotator(I, itemId) {
 		<? if ($vsst) { ?>V_LABEL_SHORTCUTS, <? } ?>
 		PSEUDOLABEL_SHORTCUTS);
 	<? if ($psst) { ?>
-	this.labels = PSST_LIST_OF_LABELS;
+	this.labels = PSST_LIST_OF_LABELS.concat(PSEUDOLABEL_LIST);
 	this.lexlabeldescriptions = PSST_LEX_LABEL_DESCRIPTIONS;
 	this.labeldescriptions = PSST_SHORT_DEFS;
 	<? } else { ?>
