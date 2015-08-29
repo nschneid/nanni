@@ -2056,7 +2056,7 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 	a.labels = this.labels;
 	a.toplabels = this.toplabels;
 	<? if ($psst) { ?>
-	var prepw = strongUnitString(a); // possibly a multiword prep. TODO: this logic doesn't get executed when updating MWE analysis.
+	var prepw = strongUnitString(a).toLowerCase(); // possibly a multiword prep. TODO: this logic doesn't get executed when updating MWE analysis.
 	if (PSST_TOP_LABELS[prepw])	// prepw may be an MWE
 		a.toplabels = PSST_TOP_LABELS[prepw];
 	else if (PSST_TOP_LABELS[w])	// back off to first word if MWE is not listed
