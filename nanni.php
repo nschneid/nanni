@@ -74,8 +74,10 @@ body.embedded textarea { background-color: transparent; }
 .ui-menu .ui-menu-item a { padding-top: 0; padding-bottom: 0; }
 .toplabel { color: #09f; }
 
-.indexlinks { position: fixed; bottom: 10px; right: 10px; }
-.indexlinks a { color: #aaa; font-variant: small-caps; }
+.homelink,.indexlinks { position: fixed; bottom: 10px; }
+.homelink { left: 10px; }
+.indexlinks { right: 10px; }
+.homelink a,.indexlinks a { color: #aaa; font-variant: small-caps; }
 
 textarea[readonly].comment { background-color: #ffc !important; }
 </style>
@@ -3036,6 +3038,7 @@ else echo 'Multiword Expression';
 		$ixqs['from'] = 0;
 		$ixurl = 'nanni_items.php?' . http_build_query($ixqs) . "#n$iFrom";
 ?>
+	<div class="homelink"><a href="nanni_home.php?u=<?= $u ?>">home</a></div>
 	<div class="indexlinks"><a href="<?= $ixurl ?>">item index</a></div>
 <? } ?>
 
