@@ -210,7 +210,7 @@ if ($iFrom>-1) {
 			if (isset($_REQUEST['reconciled'][$I])) {
 				if ($reconcile[0]=='^') {	
 					// most recent of the source versions being reconciled, 
-					// EXCLUDING versions with the "trial" flag
+					// EXCLUDING versions with the "trial" flag UNLESS currently in trial mode
 					$maxtstamp = -1;
 					foreach ($_REQUEST['reconciledtime'][$I] as $tstamp) {
 						if (intval($tstamp) > $maxtstamp)
@@ -222,11 +222,13 @@ if ($iFrom>-1) {
 					foreach (get_key_values(get_user_dir('*') . "/$split.nanni", $sentId) as $data) {
 						$parts = explode("\t", $data);
 						$matches = array();
-						// exclude annotations with the "trial" flag
-						if (preg_match('/"flags":[ ]*"([^"]*)"/', $parts[4], $matches)==1) {
-							$data_flags = explode(';', preg_replace('/; /', ';', $matches[1]));
-							if (array_search('trial', $data_flags)!==false)
-								continue;
+						// exclude annotations with the "trial" flag unless currently in trial mode
+						if (array_search('trial', $sFlags)===false) {	// not currently in trial mode
+							if (preg_match('/"flags":[ ]*"([^"]*)"/', $parts[4], $matches)==1) {
+								$data_flags = explode(';', preg_replace('/; /', ';', $matches[1]));
+								if (array_search('trial', $data_flags)!==false)
+									continue;
+							}
 						}
 						$tstamp = intval($parts[1]);
 						if ($tstamp > $Atstamp) {	// this is the newest so far
