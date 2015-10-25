@@ -479,6 +479,9 @@ function htmlspecialchars(s) {
 	return $("<div>").text(s).html().replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
+RegExp.escape = function(text) {
+    return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+}
 
 //Cookie-handling functions
 //Source: http://www.quirksmode.org/js/cookies.html, 24 Aug 2008
@@ -2759,235 +2762,184 @@ function arraysEq(x, y) {
 	return true;
 }
 
-function parseMWEMarkup(ww, s) {
-	var SPECIALS = ['_', '~', '|', '$'];
-	//ww = (original word tokens)
-	/*assert not any(w for w in ww if w not in SPECIALS and any(c for c in SPECIALS if c in w)), 'Original sentence contains special characters within other tokens'*/
-	// Assumption: these will not be changed except for marking MWEs
-	var s = s.replace(/\s+/g, ' ').trim();
-	var reJoiners = /[_~]|\|\S+|(\|\S+)?\$\S+/g;
-	var tt = [];
-	var parts = s.split(' ');
-	for (var i=0; i<parts.length; i++) {
-		/*if (SPECIALS.indexOf(parts[i])>-1)
-			parts[i] = [parts[i]];
-		else*/ 
-		if (SPECIALS.indexOf(parts[i][0])>-1 && (parts[i].length==1 || parts[i][1]==='|' || parts[i][1]==='$')) {
-			if (parts[i].length==1)
-				parts[i] = [parts[i]];
-			else if (parts[i][1]==='|' || parts[i][1]==='$')
-				parts[i] = [parts[i][0]];
+/* Process tokens of the original sentence (ww) in tandem with the MWE markup (m).
+ * The latter should differ only with respect to MWE joiners.
+ * Return [sLexOffsets, wLexOffsets] (strong and weak lexical unit assignments, respectively).
+ * E.g., [[0,1,1,2],[0,1,1,1]] indicates the segmentation: x x_x~x
+ * On failure, returns an error message string.
+ *
+ * Sequences of spaces in the markup are normalized. 
+ * Input tokens must not begin or end with a space or contain multiple 
+ * consecutive spaces. Apart from that restriction, tokens with special characters 
+ * (including '_') are allowed.
+ */
+function parseMWEMarkup(ww, m) {
+	var m = m.replace(/\s+/g, ' ').trim()+' ';
+	var decorations = [];	// left and right MWE information on tokens
+	var j = 0;	// character offset into 'm'
+	for (var i=0; i<ww.length; i++) {
+		var lattached = true;	// no space on the left
+		if (j==0 || m[j]==' ') {
+			lattached = false;
+			if (j>0) j++;
 		}
-		else
-			parts[i] = parts[i].split(reJoiners);
-		
-		// remove empty strings
-		while (parts[i].indexOf('')>-1)
-			parts[i].splice(parts[i].indexOf(''),1);
-		while (parts[i].indexOf(undefined)>-1)
-			parts[i].splice(parts[i].indexOf(undefined),1);
-			
-		tt = tt.concat(parts[i]);
+		var w = ww[i];
+		var rLexer = new RegExp('^([_~]?)'+RegExp.escape(w)+'(([_~]|\\$\\d+|\\|\\d+(\\$\\d+)?)?)(?=[ _~])');	//
+		var lex = m.substr(j).match(rLexer);
+		if (lex===null) {
+			/*console.log(m.substr(j));
+			console.log(rLexer.source);*/
+			return 'Token '+i+' from input expected at markup position '+j+': '+w;
+		}
+		// left and right decorations
+		var ldec = lex[1];
+		if (!lattached)
+			ldec = ' '+ldec;
+		var rdec = lex[2];
+		decorations.push([ldec,rdec]);
+		j += lex[0].length;
 	}
 	
-	if (!arraysEq(tt,ww)) {
-//console.log(tt);
-//console.log(ww);
-		return 'Ensure that none of the tokens from the original sentence have been split, modified, or deleted';
-	}
-	// allow single-character tokens ~ and _, optionally with user-specified indices. (However, a~ ~ ~b and a~ ~$1 ~b should be invalid.)
-	// check validity of ~'s
-//	var valid = (s+' ').match(/^(\S |[^~\s]\S*[^~\s] |~(\|\S+)?(\$\S+)? |[^~\s]\S*(~ ([^~\s] |[^~\s]\S*[^~\s] )+~)\S*[^~\s] )+$/)!==null;
-	var valid = (s+' ').match(/^(\S |[^~\s]\S*[^~\s] |~(\|\S+)?(\$\S+)? |[^~\s]\S*(~ ([^~\s] |[^~\s]\S*[^~\s] )+~\S*[^~\s])+ )+$/)!==null;
-	if (!valid) {
-	   return 'Invalid use of ~ joiners';
-	}
-	// remove ~ joiners
-	var s2 = s.replace(/(?=\S)~|~(?=\S)/g, ' ')
-	s2 = s2.replace(/\s+/g, ' ', s).trim()
-	// check validity of _'s
-//	valid = (s2+' ').match(/^(\S |[^_\s]\S*[^_\s] |_(\|\S+)?(\$\S+)? |[^_\s]\S*(_ ([^_\s] |[^_\s]\S*[^_\s] )+_)\S*[^_\s] )+$/)!==null;
-	valid = (s2+' ').match(/^(\S |[^_\s]\S*[^_\s] |_(\|\S+)?(\$\S+)? |[^_\s]\S*(_ ([^_\s] |[^_\s]\S*[^_\s] )+_\S*[^_\s])+ )+$/)!==null;
-	if (!valid) {
-	   return 'Invalid use of _ joiners';
-	}
-	
-	if (s.search(/__/)>-1 || s.search(/~~/)>-1 || s2.search(/__/)>-1) {
-		return 'Invalid sequence: __ or ~~';
-	}
-	 
-	// now parse the markup
-	 
-	var i = 0;	// character position in string
-	var j = 0;	// offset of next token in the source sentence to be consumed
-	var sgrouping = [];	// strong grouping (x_y or x|1 y|1)
-	var wgrouping = [];	// weak grouping (x~y or x$1 y$1)
-	var sindexCounter = 0;
-	var windexCounter = 0;
-	var underscoreStartGap = -1;
-	var tildeStartGap = -1;
-	var rLexer = /( |^)[_~](\|\S+)?(\$\S+)?(?=( |$))|( ?([ _~] ?)+|[^_~\s]+)/g;
-	var underscoreResume = false;
-	var tildeResume = false;
-	while ((m = rLexer.exec(s))!==null) {
-		//if (m.index!=i) { console.log(s); console.log(i, m); }
-		var t = m[0];
-		i = m.index + t.length;
+	// Now parse the left and right decorations into groups
+	var sgroupsByName = {};	// named index -> offset
+	var wgroupsByName = {};
+	var sNameCount = {};	// named index -> number of times name appears in the markup (should be >=2)
+	var wNameCount = {};
+	var sLastOpenGroupOffset = null;
+	var wLastOpenGroupOffset = null;
+	var sLexOffsets = [];	// each lexical unit offset is the offset of its first token
+	var wLexOffsets = [];	// every token belongs to a lexical unit, singleton or multiword
+	for (var i=0; i<decorations.length; i++) {
+		var kS = kW = -1;
+		var ldec = decorations[i][0];
+		var rdec = decorations[i][1];
+		var nextldec = (i<decorations.length-1) ? decorations[i+1][0] : '';
+		var lattached = !ldec.startsWith(' ');
 		
-		if (t.indexOf('~')>-1 && t.indexOf('_')>-1) {
-			return 'Illegal sequence: '+t;
+		// Determine the current token's lexical unit
+		if (ldec==' ')
+			kS = kW = i;
+		else if (ldec=='_') {
+			kS = sLexOffsets[i-1];
+			kW = i;
 		}
-		else if (t==' ') {
-			sindexCounter++;
-			windexCounter++;
-			underscoreResume = false;
-			tildeResume = false;
+		else if (ldec==' _') {
+			if (sLastOpenGroupOffset===null)
+				return 'No open strong MWE to continue at input token '+i+': '+ww[i];
+			if (i>0 && sLexOffsets[i-1]==sLastOpenGroupOffset)
+				return 'Input token '+i+' cannot continue an open strong group from the previous token (join consecutively instead): '+ww[i];
+			kS = sLastOpenGroupOffset;
+			sLastOpenGroupOffset = null;
+			kW = i;
 		}
-		else if (t.indexOf('_')>-1 && t!=' _ ' && j>0 && i<s.length && s[i]!==' ') {
-		// should NOT be _ occurring as a raw token
-			if (t[0]==' ') {	// ' _'
-				underscoreResume = true;
-			}
-			else if (t=='_ ') {
-				if (!underscoreResume)	// necessary for structures like a_ b _c_ d _e
-					underscoreStartGap = sindexCounter;
-				sindexCounter++;
-				underscoreResume = false;
-			}
-			tildeResume = false;
-			windexCounter++;
+		else if (ldec=='~') {
+			kS = i;
+			kW = wLexOffsets[i-1];
 		}
-		else if (t.indexOf('~')>-1 && t!=' ~ ' && j>0 && i<s.length && s[i]!==' ') {
-//console.log(j,'"'+t+'"');	// should NOT be ~ occurring as a raw token
-			if (t[0]==' ') {	// ' ~'
-				tildeResume = true;
-			}
-			else if (t=='~ ') {
-				if (!tildeResume)	// necessary for structures like a~ b ~c~ d ~e
-					tildeStartGap = windexCounter;
-				windexCounter++;
-				tildeResume = false;
-			}
-			underscoreResume = false;
-			sindexCounter++;
+		else if (ldec==' ~') {
+			kS = i;
+			if (wLastOpenGroupOffset===null)
+				return 'No open weak MWE to continue at input token '+i+': '+ww[i];
+			if (i>0 && wLexOffsets[i-1]==wLastOpenGroupOffset)
+				return 'Input token '+i+' cannot continue an open weak group from the previous token (join consecutively instead): '+ww[i];
+			kW = wLastOpenGroupOffset;
+			wLastOpenGroupOffset = null;
 		}
-		else {
-			if (t[0]==' ') {	// ' _ ', ' ~ ', ...
-				sindexCounter++;
-				windexCounter++;
-				underscoreResume = false;
-				tildeResume = false;
-			}
 		
-			if (t.indexOf('|',1)>-1) {	// user-specified strong index (allow first character to be raw |)
-				var sidx = (t.indexOf('|',1)+1<t.length) ? t.substr(t.indexOf('|',1)+1) : '';
-				var tail = '';
-				if (sidx.indexOf('$')>-1) {
-					tail = sidx.substring(sidx.indexOf('$'));
-					sidx = sidx.substring(0,sidx.indexOf('$'));	// also a weak index
+		
+		
+		// Because of the way the regex is set up, 
+		// contiguous joiners should always be in ldec.
+		// Thus, nonempty rdec should indicate an open group.
+		if (rdec!=='') {
+			if (rdec.indexOf('|')>-1 || rdec.indexOf('$')>-1) {
+				sName = rdec.match(/\|\d+/);
+				if (sName!==null) {
+					sName = sName[0];
+					if (sName in sgroupsByName) {
+						// relabel any previous occurrences of kS 
+						// so they are in the same group
+						for (var q=kS; q<i; q++) {
+							sLexOffsets[q] = sgroupsByName[sName];
+							sNameCount[sName]++;
+						}
+						kS = sgroupsByName[sName];
+						sNameCount[sName]++;
+					}
+					else {
+						sgroupsByName[sName] = kS;
+						sNameCount[sName] = 1;
+					}
 				}
-				else if (t.indexOf('$',1)>-1) {
-					return 'Cannot have $ index before | index: '+t;
+				wName = rdec.match(/\$\d+/);
+				if (wName!==null) {
+					wName = wName[0];
+					if (wName in wgroupsByName) {
+						// relabel any previous occurrences of kW 
+						// so they are in the same group
+						for (var q=kW; q<i; q++) {
+							wLexOffsets[q] = wgroupsByName[wName];
+							wNameCount[wName]++;
+						}
+						kW = wgroupsByName[wName];
+						wNameCount[wName]++;
+					}
+					else {
+						wgroupsByName[wName] = kW;
+						wNameCount[wName] = 1;
+					}
 				}
+			}
+			else if (!nextldec.startsWith(' '))
+				return 'Invalid markup (probably at the end of the sentence)'
 				
-				if (sidx==='' || isNaN(Number(sidx))) {
-					return 'Invalid index (must be an integer): "'+sidx+'"';
-				}
-				else if (underscoreResume) {
-					return 'Cannot index the second part of an underscore-gapped expression: "'+sidx+'"';
-				}
-				var sgindex = sidx;
-//console.log('token',j,'sgindex',sgindex);
-				// since the index may be applied to a (non-gappy) multiword unit, 
-				// ensure all parts of the unit share the user-specified index
-				for (var k=sgrouping.length-1; k>=0 && sgrouping[k]===sindexCounter; k--) {
-					sgrouping[k] = sgindex;
-				}
-				
-				t = t.substring(0,t.indexOf('|',1)) + tail;
+			if (rdec=='_') {	// an open strong group
+				if (sLastOpenGroupOffset!==null)
+					return 'Already an open strong MWE: input tokens '+sLastOpenGroupOffset+' and '+kS;
+				sLastOpenGroupOffset = kS;
 			}
-			else
-				var sgindex = (underscoreResume) ? underscoreStartGap : sindexCounter;
-			
-			sgrouping.push(sgindex)	// will be a string if specified in the input, and an int otherwise
-			
-			
-			
-			if (t.indexOf('$',1)>-1) {	// user-specified weak index (allow first character to be raw $)
-				var widx = (t.indexOf('$',1)+1<t.length) ? t.substr(t.indexOf('$',1)+1) : '';
-				if (widx==='' || isNaN(Number(widx))) {
-					return 'Invalid index (must be an integer): "'+widx+'"';
-				}
-				else if (tildeResume) {
-					return 'Cannot index the second part of an tilde-gapped expression: "'+widx+'"';
-				}
-				var wgindex = widx;
-//console.log('token',j,'wgindex',wgindex);
-				// since the index may be applied to a (non-gappy) multiword unit, 
-				// ensure all parts of the unit share the user-specified index
-				for (var k=wgrouping.length-1; k>=0 && wgrouping[k]===windexCounter; k--) {
-					wgrouping[k] = wgindex;
-				}
-				
-				t = t.substring(0,t.indexOf('$',1));
+			else if (rdec=='~') {	// an open weak group
+				if (wLastOpenGroupOffset!==null)
+					return 'Already an open weak MWE: input tokens '+wLastOpenGroupOffset+' and '+kW;
+				wLastOpenGroupOffset = kW;
 			}
-			else
-				var wgindex = (tildeResume) ? tildeStartGap : windexCounter;
-			
-			wgrouping.push(wgindex)	// will be a string if specified in the input, and an int otherwise
-			
-			if (t.trim()!=ww[j])
-				return 'Ensure that none of the tokens from the original sentence have been split, modified, or deleted: expected token '+j+' to be "'+ww[j]+'", got "'+t+'"';
-			
-			
-			if (((j==0 && (t[0]=='_' || t[0]=='~')) || (t.substring(0,2)==' _' || t.substring(0,2)==' ~')) 
-			    && (i==s.length || s[i]==' ')) {	// _ or ~ used as a raw symbol
-				sindexCounter++;
-				windexCounter++;
-				underscoreResume = false;
-				tildeResume = false;
-			}
-			
-			j++;
 		}
-	}
-	
-	//if (grouping.length!=ww.length) console.log(grouping.length, ww.length);
-	
-	
-	// convert user-specified group indices to integers
-	for (var i=0; i<sgrouping.length; i++) {
-		if (typeof sgrouping[i] !== "number") {
-			if (wgrouping.indexOf(sgrouping[i])>-1)
-				return 'Cannot use the same index for a weak group and a strong group: '+sgrouping[i];
-			if (sgrouping.lastIndexOf(sgrouping[i])==i)
-				return 'Index specified for only one part of a group: '+sgrouping[i];
 		
-			sindexCounter++;
-			for (var j=i+1; j<sgrouping.length; j++) {
-				if (sgrouping[j]==sgrouping[i])
-					sgrouping[j] = sindexCounter;
-			}
-			sgrouping[i] = sindexCounter;
-		}
+		sLexOffsets.push(kS);
+		wLexOffsets.push(kW);
 	}
-	for (var i=0; i<wgrouping.length; i++) {
-		if (typeof wgrouping[i] !== "number") {
-			if (wgrouping.lastIndexOf(wgrouping[i])==i)
-				return 'Index specified for only one part of a group: '+wgrouping[i];
-			
-			windexCounter++;
-			for (var j=i+1; j<wgrouping.length; j++) {
-				if (wgrouping[j]==wgrouping[i])
-					wgrouping[j] = windexCounter;
+	if (sLastOpenGroupOffset!==null)
+		return 'Unfinished strong MWE starting at token '+sLastOpenGroupOffset+': '+ww[sLastOpenGroupOffset];
+	if (wLastOpenGroupOffset!==null)
+		return 'Unfinished weak MWE starting at token '+wLastOpenGroupOffset+': '+ww[wLastOpenGroupOffset];
+	var sNames = Object.keys(sNameCount);
+	for (var q=0; q<sNames.length; q++) {
+		var sName = sNames[q];
+		if (sNameCount[sName]<2)
+			return 'Strong MWE index only applies to one contiguous expression: '+sName;
+	}
+	var wNames = Object.keys(wNameCount);
+	for (var q=0; q<wNames.length; q++) {
+		var wName = wNames[q];
+		if (wNameCount[wName]<2)
+			return 'Weak MWE index only applies to one contiguous expression: '+wName;
+		var wOffset = wgroupsByName[wName];
+		var firstSOffsetInW = sLexOffsets[wLexOffsets[wOffset]];
+		var foundMultipleS = false;
+		for (var v=wOffset+1; v<wLexOffsets.length; v++) {
+			if (wLexOffsets[v]==wOffset && sLexOffsets[v]!=firstSOffsetInW) {
+				// same weak expression, different strong expression
+				foundMultipleS = true;
+				break;
 			}
-			wgrouping[i] = windexCounter;
 		}
+		if (!foundMultipleS)
+			return 'Weak MWE at token '+wOffset+' must contain strictly more tokens than those of a single strong MWE';
+			// e.g., x|1$2 y x|1$2 is disallowed
 	}
 	
-	return [sgrouping, wgrouping];
+	return [sLexOffsets, wLexOffsets];
 }
-
 
 function loadVersion(I, versionS) {
 	var parts = versionS.split('\t');
