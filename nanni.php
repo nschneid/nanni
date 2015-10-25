@@ -2760,12 +2760,12 @@ function arraysEq(x, y) {
 }
 
 function parseMWEMarkup(ww, s) {
-	SPECIALS = ['_', '~', '|', '$'];
+	var SPECIALS = ['_', '~', '|', '$'];
 	//ww = (original word tokens)
 	/*assert not any(w for w in ww if w not in SPECIALS and any(c for c in SPECIALS if c in w)), 'Original sentence contains special characters within other tokens'*/
 	// Assumption: these will not be changed except for marking MWEs
-	s = s.replace(/\s+/g, ' ').trim();
-	reJoiners = /[_~]|\|\S+|(\|\S+)?\$\S+/g;
+	var s = s.replace(/\s+/g, ' ').trim();
+	var reJoiners = /[_~]|\|\S+|(\|\S+)?\$\S+/g;
 	var tt = [];
 	var parts = s.split(' ');
 	for (var i=0; i<parts.length; i++) {
@@ -2990,7 +2990,7 @@ function parseMWEMarkup(ww, s) {
 
 
 function loadVersion(I, versionS) {
-	parts = versionS.split('\t');
+	var parts = versionS.split('\t');
 
 	var mweactor = AA[I][MWEAnnotator.annotatorTypeIndex].actors[0];
 	$(mweactor.target).val(parts[parts.length-2]);
