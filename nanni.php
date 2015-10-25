@@ -887,7 +887,7 @@ MWEAnnotator.prototype.isChunkEnder = function(tknOffset, strength) {
 	return (sb==tknOffset && wb==tknOffset);
 }
 MWEAnnotator.prototype.validate = function() {
-	var x = parseMWEMarkup($('.item .input').val());
+	var x = parseMWEMarkup($('p.sent').text().split(" "), $('.item .input').val());
 	if (typeof x==="string") {
 		$('.input').get(0).setCustomValidity(x);
 	}
@@ -2712,7 +2712,8 @@ function init() {
 	inited = true;
 	
 	$('.item > p.sent').each(function (j) {
-		ww = $(this).text().split(/\s+/g);
+		var ww = $(this).text().split(/\s+/g);
+		$(this).attr({"data-ww": ww});
 		$(this).html('');
 		if (ww.length>1 || ww[0]!=="") {
 			for (var i=0; i<ww.length; i++) {
@@ -2721,7 +2722,7 @@ function init() {
 			}
 		}
 	});
-		
+	
 	ann_init();
 	ann_setup();
 
@@ -2758,7 +2759,7 @@ function arraysEq(x, y) {
 	return true;
 }
 
-function parseMWEMarkup(s) {
+function parseMWEMarkup(ww, s) {
 	SPECIALS = ['_', '~', '|', '$'];
 	//ww = (original word tokens)
 	/*assert not any(w for w in ww if w not in SPECIALS and any(c for c in SPECIALS if c in w)), 'Original sentence contains special characters within other tokens'*/
