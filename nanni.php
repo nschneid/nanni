@@ -2605,9 +2605,9 @@ ItemNoteAnnotator.prototype.stopStage = -1;
 MWEAnnotator.prototype.stopStage = -1;
 PrepTokenAnnotator.prototype.stopStage = -1;
 ChunkLabelAnnotator.prototype.stopStage = -1;
-ChunkLabelAnnotator.prototype.N_FILTER = function (word, pos) { return pos.match(/^(N|ADD|PROPN)/); };
-ChunkLabelAnnotator.prototype.V_FILTER = function (word, pos) { return pos.match(/^V|AUX/); };
-ChunkLabelAnnotator.prototype.NV_FILTER = function (word, pos) { return pos.match(/^(N|ADD|PROPN|V|AUX)/); };
+ChunkLabelAnnotator.prototype.N_FILTER = function (word, pos) { return pos.match(/^(N|ADD|PROPN)/) && !pos.match(/^NUM/); };
+ChunkLabelAnnotator.prototype.V_FILTER = function (word, pos) { return pos.match(/^V/); };
+ChunkLabelAnnotator.prototype.NV_FILTER = function (word, pos) { return pos.match(/^(N|ADD|PROPN|V)/) && !pos.match(/^NUM/); };
 ChunkLabelAnnotator.prototype.PREPS = ['of','to','for','by','with','from','at','over','out','about','in','on','off','as','down','under','above','across','after','against','ago','among','during','before','behind','below','beneath','beside','besides','between','beyond','away','back','into','near','since','until','together','toward','towards','apart','within','without'];
 ChunkLabelAnnotator.prototype.P_FILTER = function (word, pos) {	// should the given token be tagged as a preposition?
 	// PRE is from Italian tagset
