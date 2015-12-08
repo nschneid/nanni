@@ -2065,6 +2065,7 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 	a.word = wordelt;
 	var w = $(a.word).text().toLowerCase();
 	a.url = 'http://www.ark.cs.cmu.edu/PrepWiki/index.php/Category:'+w;
+	a.pos = $.parseJSON($(this.item).find('input.pos').val())[wordOffset];
 	
 	a.tokenOffset = wordOffset;
 	a.labels = this.labels;
@@ -2133,6 +2134,10 @@ TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
 				window.open(theactor.url, '_blank');
 			});
 		}
+		if (theactor.pos!==undefined) {
+			$word.attr("title", theactor.pos);
+		}
+		
 		
 		// http://api.jqueryui.com/autocomplete/
 		// TODO: depending on defaults/preannotations, set placeholder for preps belonging to an MWE
