@@ -2006,7 +2006,8 @@ PSEUDOLABEL_DESCRIPTIONS = {'?': '(unsure; you can also tentatively specify one 
 		'`a': 'auxiliary',
 		'`v': 'main verb',
 		'`j': 'adjectival',
-		'`r': 'adverb'};
+		'`r': 'adverb',
+		'`c': 'coordinating conjunction'};
 PSEUDOLABEL_SHORTCUTS = {};
 PSEUDOLABEL_LIST = [];
 Object.keys(PSEUDOLABEL_DESCRIPTIONS).forEach(function (x) {
