@@ -1,0 +1,2605 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<link rel="stylesheet" href="jquery-ui_1.9.2.css" />
+<link rel="icon" type="image/png" href="img/cupcake-icon.png" />
+<style type="text/css">
+body,tbody { font-family: "Helvetica Neue",helvetica,arial,sans-serif; }
+div.item { max-width: 40em; margin-left: auto; margin-right: auto; }
+.slu0 { color: #09f; }
+.slu1 { color: #f00; }
+.slu2 { color: #e70; }
+.slu3 { color: #6a0; }
+.slu4 { color: #f0c; }
+.slu5 { color: #c3f; }
+.slu6 { color: #093; }
+.slu7 { color: #33c; }
+.wlu7 { border-bottom: dotted 2px #09f; }
+.wlu6 { border-bottom: dotted 2px #f00; }
+.wlu3 { border-bottom: solid 2px #e70; }
+.wlu4 { border-bottom: dotted 2px #6a0; }
+.wlu5 { border-bottom: dotted 2px #f0c; }
+.wlu2 { border-bottom: solid 2px #c3f; }
+.wlu1 { border-bottom: solid 2px #093; }
+.wlu0 { border-bottom: solid 2px #33c; }
+.note:default { color: #ccc; }
+
+input:not(:disabled).unsuggested-label { background-color: #ff7; }	/* there are suggestions for this token, but the value is not one of them */
+
+input[type=submit] { height: 3em; width: 65%; }
+input.btnprev,input.btnnext { height: 3em; width: 15%; }
+input[type=submit]:hover:not([disabled]),input.btnprev:hover:not([disabled]),input.btnnext:hover:not([disabled]) { background-color: #333; color: #eee; }
+input[type=submit]:focus:not([disabled]),input.btnprev:focus:not([disabled]),input.btnnext:focus:not([disabled]) { border: solid 2px #ff0; }
+
+textarea[readonly],input[readonly] { border: none; }
+
+.outdated { color: #ccc; }
+.trial { font-style: italic; }
+
+body.embedded p { margin-top: 0; margin-bottom: 0; }
+body.embedded textarea { background-color: transparent; }
+
+.w { position: relative; display: inline-block; vertical-align: top; margin-bottom: 1.5em; }
+.w input:-moz-placeholder { font-style: italic; }
+.w input::-webkit-input-placeholder { font-style: italic; }
+.w input:-ms-input-placeholder { font-style: italic; }
+.tokenlabel { width: 6em; border: solid 1px #ccc; position: absolute; top: 2.1em; left: 0; }
+.ui-menu-item { font-size: 10pt; }
+.ui-menu .ui-menu-item a { padding-top: 0; padding-bottom: 0; }
+.toplabel { color: #09f; }
+
+.homelink,.indexlinks { position: fixed; bottom: 10px; }
+.homelink { left: 10px; }
+.indexlinks { right: 10px; }
+.homelink a,.indexlinks a { color: #aaa; font-variant: small-caps; }
+
+textarea[readonly].comment { background-color: #ffc !important; }
+
+textarea:invalid { border-color: red; }
+</style>
+
+<script type="text/javascript" language="javascript" src="js/jquery_1.8.2.min.js"></script>
+<script type="text/javascript" language="javascript" src="js/jquery.json-2.3.min.js"></script>
+<script type="text/javascript" language="javascript" src="js/jquery-ui_1.9.2.js"></script>
+<script type="text/javascript" language="javascript" src="js/jquery.ui.autocomplete.html.js"></script>
+<script type="text/javascript" language="javascript" src="js/sisyphus.min.js"></script>
+<script type="text/javascript">
+
+// Escape special HTML characters, including quotes
+function htmlspecialchars(s) {
+	return $("<div>").text(s).html().replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+RegExp.escape = function(text) {
+    return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+}
+
+//Cookie-handling functions
+//Source: http://www.quirksmode.org/js/cookies.html, 24 Aug 2008
+
+function createCookie(name,value,days) {
+	if (days) {
+		var date = new Date();
+		date.setTime(date.getTime()+(days*24*60*60*1000));
+		var expires = "; expires="+date.toGMTString();
+	}
+	else var expires = "";
+	document.cookie = name+"="+value+expires+"; path=/";
+}
+
+function readCookie(name) {
+	var nameEQ = name + "=";
+	var ca = document.cookie.split(';');
+	for(var i=0;i < ca.length;i++) {
+		var c = ca[i];
+		while (c.charAt(0)==' ') c = c.substring(1,c.length);
+		if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+	}
+	return null;
+}
+function getName(){
+	var name = readCookie("annotator");
+	if (name != null) return name;
+	name = prompt("Enter annotator name (saved as cookie)");
+	if (name!=null)
+	{
+		createCookie("annotator", name, 7);
+		return name;
+	}
+}
+
+function eraseCookie(name) {
+	createCookie(name,"",-1);
+}
+
+function equivArrays(x, y) {
+	if (x.length!=y.length) return false;
+	for (var i=0; i<x.length; i++) {
+		if (x[i]!=y[i]) return false;
+	}
+	return true;
+}
+
+// The provided string will be conjoined with other fields to form a CSV record, and should thus be appropriately quoted
+function logString(s) {
+	var logEntry = new String(new Date());
+	if (s!=null)
+		logEntry += "," + s;
+	$("#results").val($("#results").val() + logEntry + "\n");
+}
+function logEvent(targetId, att, val) {	// 'val', in particular, should be appropriately quoted
+	logString(getName() + ',' + targetId + ',' + att + ',' + val);
+}
+// Record a user's decision to add or remove a segmentation point
+// segmentationPoint: e.g. s85c5 (where character indices to the tokenized sentence are 0-based and include spaces)
+// addition: true if the segmentation is being added, false otherwise
+function recordDecision(segmentationPosition, addition) {
+	logString(((addition) ? '+' : '-') + segmentationPosition);
+}
+// Record that the user clicked to see more of the instructions, suggesting that they're paying attention
+function recordClickedMore() {
+	logString("expandInstructionDetails");
+}
+
+function shuffleList(listId) {
+	// Randomize the ordering of the items in the given list, and return the list item IDs in their new order as an Array
+	// - Remove sentences from the DOM
+	var lis = $("#" + listId + " > li").detach();
+
+	// - Generate a permuation of the integers from 0 to the number of sentences
+	var numsSorted = new Array();
+	for (var h=0; h<lis.length; h++)
+		numsSorted[h] = h;
+	var numsRandomized = new Array();
+	for (var q=0; numsSorted.length>0; q++) {
+		var r = Math.floor(Math.random()*numsSorted.length);
+		// Remove the rth number and put it in the randomized array
+		var rem = numsSorted.splice(r,1);
+		numsRandomized.push(rem[0]);
+	}
+	
+	// - Add sentences back to the DOM in the randomized order
+	newOrder = new Array();
+	for (var qq=0; qq<numsRandomized.length; qq++) {
+		var liId = lis.eq(numsRandomized[qq]).appendTo("#"+listId).attr("id");
+		newOrder.push(liId);
+	}
+
+	return newOrder;
+}
+
+
+
+/************ ANNOTATION PROTOCOL ************/
+/*
+This protocol attempts to standardize several key components of the annotation process 
+so that kinds of annotation, or "annotators", can be defined and applied in a modular way. 
+
+Some terminology:
+items: independent units to be presented for annotation, such as sentences. 
+       Defined by the input and common to all annotators. Must not be empty.
+annotator:
+       interface that manages a particular kind of annotation for an item, 
+       mediating among the item's input, the current configuration, the interface 
+       (rendering), user actions, and the output.
+passive annotator: 
+       annotator used without the opportunity for human interaction. 
+       e.g. could be used to submit metadata along with an item, or to display previous 
+       annotations that are not modifiable at present.
+targets:
+       annotation sites identified by an annotator for a particular item. 
+       e.g., specific tokens in the item, or the item as a whole. 
+       Targets for different annotators can be at different levels of granularity. 
+       Each target must be identified relative to unmodifiable characteristics the 
+       original input (e.g., tokenization if this is not subject to change, or 
+       non-whitespace character offsets if whitespace can change, etc.). 
+       At any given time, the space of valid targets for one annotator (kind of annotation) 
+       may be defined by a lower-level kind of annotation (earlier annotator). 
+       "Communication" between different levels of annotation is performed with the 
+       updateTargets() method.
+       N.B.: In the code, 'target' refers to the control created by a particular annotator 
+       that holds the annotation.
+actor: inferface that encapsulates an annotator's functionality with respect to a single 
+       target. ASSUMPTION: each actor will render and control at least one interface 
+       element, known in the code as the 'target', and this element will not be shared 
+       with any other actor.
+value: the annotation for a given annotator and target.
+default value: 
+       value determined automatically, not provided or reviewed by a human annotator. 
+       possibly empty or a special flag (e.g. UNANN).
+system value: 
+       default value determined by running some automatic tool, such as a tagger.
+initial value: 
+       value populated at page load. could be a default or a previous annotation for the target.
+final value: 
+       value when the annotation is submitted (part of the item output).
+candidates: 
+       possible values. an annotator may specify a global candidate set which is filtered 
+       down depending on the target, other annotations (of the same or different kinds) 
+       in the same item as the target, etc. The candidate set may be open-ended 
+       (e.g., all strings) or confined to a whitelist.
+legal analysis: 
+       complete set of annotations for an item that is "acceptable" to all the annotators 
+       (meets any validity conditions).
+control: 
+       interface element(s) allowing the user to specify an annotation value for a target.
+structural annotation {update}: 
+       potentially affects {changes} the space of possible targets for another level of 
+       annotation. e.g. changing the tokenization or grouping tokens into chunks affects 
+       the targets available for labeling those tokens/chunks.
+
+Classes for actors and annotators are defined below, followed by the guts of the 
+annotation execution model in the global variables/functions:
+  annotators
+  II
+  AA
+  ann_init()
+  ann_setup()
+  ann_update()
+  ann_submit()
+*/
+
+
+function Actor(ann) {
+	this.ann = ann;
+}
+Actor.prototype.initValue = function() {
+	this.firstrender();
+	this.validate();
+	return {'initialization': true, 'isStructural': false};
+}
+Actor.prototype.setValue = function() {
+	this.validate();
+	var oldvalue = null;
+	this.rerender();
+	return {'oldval': oldvalue, 'isStructural': false};
+}
+Actor.prototype.validate = function() { }
+Actor.prototype.rerender = function() { }
+Actor.prototype.listenForInteraction = function() { /* nothing to do */ }
+Actor.prototype.remove = function() {
+	var j = this.ann.actors.indexOf(this);
+	if (j<0)
+		return false;	// already removed
+	$(this.target).remove();
+	this.ann.actors.splice(j,1);
+	return true;
+}
+
+function Annotator(self, I, itemId) {
+	self.I = I;
+	self.item = II[I];
+	self.itemId = itemId;
+	self.submittable = false;
+	self.constructor.started = false;
+	self.constructor.stopped = false;
+}
+Annotator.prototype.start = function() { this.constructor.started=true; }	// make annotation controls available to the user
+Annotator.prototype.stop = function() { this.constructor.stopped=true; }	// make annotation controls unavailable to the user
+
+function ItemNoteAnnotator(I, itemId) {
+	this._name = 'ItemNoteAnnotator';
+	Annotator(this, I, itemId);
+	this.actors = [];
+}
+ItemNoteAnnotator.prototype.identifyTargets = function() {
+	if ($(this.item).find('p.sent').find('span.w').length==0) {
+		// no sentence. e.g., in versions browser
+		return;
+	}
+	
+	var a = new Actor(this);
+	this.actors.push(a);
+	a.getValue = function () {
+		return this.target.value;
+	}
+	a.firstrender = function () {
+		var item = this.ann.item;
+		var itemId = this.ann.itemId;
+		this.initval = $(item).find('input.initnote').val();
+		var $control = $('<textarea/>').attr({"id": "note_"+itemId, "name": "note[]", 
+										  "placeholder": "Note for sentence "+itemId+" (optional)",
+										  "rows": "1", "cols": "80"}).addClass("comment").val(this.initval);
+		this.target = $control.get(0);
+		$('<p/>').append($control).insertAfter($(item).find('p.buttons'));
+		this.ann.submittable = true;
+	}
+	a.rerender = function () {	// if a value may have changed, decide whether to show/hide the control
+		$control = $(this.target);
+		if ($control.prop("readonly") && $control.val()==="") $control.hide();
+		else $control.show();
+	}
+}
+ItemNoteAnnotator.prototype.validate = function() { }
+
+
+function MWEAnnotator(I, itemId) {
+	this._name = 'MWEAnnotator';
+	Annotator(this, I, itemId);
+	this.actors = [];
+}
+MWEAnnotator.prototype.identifyTargets = function() {
+	if ($(this.item).find('p.sent').find('span.w').length==0) {
+		// no sentence. e.g., in versions browser
+		return;
+	}
+	
+	var a = new Actor(this);
+	this.actors.push(a);
+	
+	a.getValue = function() {
+		return this.target.value;
+	};
+	a.firstrender = function() {
+		var item = this.ann.item;
+		var itemId = this.ann.itemId;
+		var $sentence = $(item).find('p.sent');
+		this.sentence = $sentence.text();
+		this.initval = $(item).find('input.initval').val();
+		if (!this.initval)
+			this.initval = this.sentence;
+		var $control = $('<textarea/>').attr({"id": "mwe_"+itemId, "name": "mwe[]", 
+										  "rows": "5", "cols": "80"}).addClass("input").val(this.initval);
+		var $out1 = $('<input type="hidden" name="sgroups[]" class="sgroups" value=""/>').attr({"id": "sgroups_"+itemId});
+		var $out2 = $('<input type="hidden" name="wgroups[]" class="wgroups" value=""/>').attr({"id": "wgroups_"+itemId});
+		this.target = $control.get(0);
+		$('<p/>').append($control).append($out1).append($out2).insertAfter($sentence);
+		
+		this.ann.submittable = true;
+	};
+	a.listenForInteraction = function() {
+		var theactor = this;
+		$(this.target).bind('input', function (evt) {
+			ann_update(theactor, theactor.getValue());
+		});
+		// update now with preloaded/default data
+		ann_update(theactor, theactor.getValue());
+	};
+	a.setValue = function() {
+		return {'isStructural': true};
+	};
+}
+
+
+MWEAnnotator.prototype.updateTargets = function(updateInfo) { }
+MWEAnnotator.prototype.isGrouped = function(tknOffset, strength) {
+	if (arguments.length<2) strength = 'both';
+	// strength is one of ('strong', 'weak', 'both')
+	var strong = (strength=='strong' || strength=='both');
+	var weak = (strength=='weak' || strength=='both');
+	var classes = ' '+$(this.item).find('.sent .w[data-w='+tknOffset+']').attr("class");
+	return ((strong && classes.indexOf(' slu')>-1) || (weak && classes.indexOf(' wlu')>-1));
+}
+
+/* poses (optional): list of POSes for the sentence; 
+filterFxn (optional): function that must be true for the first or last (word, POS) pair in the chunk 
+for the chunk to be included 
+firstOnlyPlusWhitelist (optional): if an array, return false unless the first token in the chunk 
+is matched by filterFxn OR (when lowercased) by one of the words in the array. 
+In either case, filterFxn must return true for some word in the chunk.
+*/
+MWEAnnotator.prototype.isChunkBeginner = function(tknOffset, strength, poses, filterFxn, firstOnlyPlusWhitelist) {
+	if (arguments.length<2) strength = 'both';
+	if (arguments.length<3) poses = null;
+	if (arguments.length<4) filterFxn = function (word, pos) { return true; };
+	if (arguments.length<5) firstOnlyPlusWhitelist = false;
+	var $thisitem = $(this.item);
+	var getTok = function (toffset) {
+		return $thisitem.find('.sent .w[data-w='+toffset+']');
+	};
+	var thistok = getTok(tknOffset);
+	var w = thistok.text();
+	if (!this.isGrouped(tknOffset, strength)) {
+		return (poses===null || filterFxn(w, poses[tknOffset]));
+	}
+	// strength is one of ('strong', 'weak', 'both')
+	var strong = (strength=='strong' || strength=='both');
+	var weak = (strength=='weak' || strength=='both');
+	
+	var classes = ' '+thistok.attr("class");
+	var sb = wb = false;
+	if (strong && classes.indexOf(' slu')>-1) {
+		var sel = '.sent .w.slu'+thistok.data("slu");
+		sb = $thisitem.find(sel).eq(0).data("w");
+		if (sb!=tknOffset) return false;
+		// does filterFxn match first or last token in chunk?
+		sb = ($thisitem.find(sel+':first,'+sel+':last').filter(function (j) {
+				return (poses===null || filterFxn(getTok($(this).data("w")).text(), poses[$(this).data("w")]));
+			}).length>0);
+	}
+	if (weak && classes.indexOf(' wlu')>-1) {
+		var sel = '.sent .w.wlu'+thistok.data("wlu");
+		wb = $thisitem.find(sel).eq(0).data("w");
+		if (wb!=tknOffset) return false;
+		// does filterFxn match first or last token in chunk?
+		wb = ($thisitem.find(sel+':first,'+sel+':last').filter(function (j) {
+				return (poses===null || filterFxn(getTok($(this).data("w")).text(), poses[$(this).data("w")]));
+			}).length>0);
+	}
+	if (firstOnlyPlusWhitelist)	// note that an empty array is truthy in Javascript
+		return (sb || wb) && (poses===null || filterFxn(w, poses[tknOffset]) || firstOnlyPlusWhitelist.indexOf(w.toLowerCase())>-1);
+	return (sb || wb);
+}
+MWEAnnotator.prototype.nextInChunk = function(tknOffset, strength) {
+	if (arguments.length<2) strength = 'both';
+	if (!this.isGrouped(tknOffset, strength))
+		return true;
+	// strength is one of ('strong', 'weak', 'both')
+	var strong = (strength=='strong' || strength=='both');
+	var weak = (strength=='weak' || strength=='both');
+	var thistok = $(this.item).find('.sent .w[data-w='+tknOffset+']');
+	var classes = ' '+thistok.attr("class");
+	var sb = wb = -1;
+	if (strong && classes.indexOf(' slu')>-1) {
+		var sgroups = $(this.item).find('.sent .w.slu'+thistok.data("slu")).filter(function (j) {
+			return $(this).data("w")>tknOffset;
+		}).eq(0).data("w");
+	}
+	if (weak && classes.indexOf(' wlu')>-1) {
+		wb = $(this.item).find('.sent .w.wlu'+thistok.data("wlu")).filter(function (j) {
+			return $(this).data("w")>tknOffset;
+		}).eq(0).data("w");
+	}
+	return (sb==tknOffset && wb==tknOffset);
+}
+MWEAnnotator.prototype.isChunkSegmentEnder = function(tknOffset, strength) {
+	if (arguments.length<2) strength = 'both';
+	if (!this.isGrouped(tknOffset, strength))
+		return true;
+	// strength is one of ('strong', 'weak', 'both')
+	var strong = (strength=='strong' || strength=='both');
+	var weak = (strength=='weak' || strength=='both');
+	var thistok = $(this.item).find('.sent .w[data-w='+tknOffset+']');
+	var classes = ' '+thistok.attr("class");
+	var nexttok = $(this.item).find('.sent .w[data-w='+(tknOffset+1)+']');
+	if (strong && classes.indexOf(' slu')>-1) {
+		if (nexttok.data("slu")==thistok.data("slu"))
+			return false;
+	}
+	if (weak && classes.indexOf(' wlu')>-1) {
+		if (nexttok.data("wlu")==thistok.data("wlu"))
+			return false;
+	}
+	return true;
+}
+MWEAnnotator.prototype.isChunkEnder = function(tknOffset, strength) {
+	if (arguments.length<2) strength = 'both';
+	if (!this.isGrouped(tknOffset, strength))
+		return true;
+	// strength is one of ('strong', 'weak', 'both')
+	var strong = (strength=='strong' || strength=='both');
+	var weak = (strength=='weak' || strength=='both');
+	var thistok = $(this.item).find('.sent .w[data-w='+tknOffset+']');
+	var classes = ' '+thistok.attr("class");
+	var sb = wb = tknOffset;
+	if (strong && classes.indexOf(' slu')>-1) {
+		sb = $(this.item).find('.sent .w.slu'+thistok.data("slu")).eq(-1).data("w");
+	}
+	if (weak && classes.indexOf(' wlu')>-1) {
+		wb = $(this.item).find('.sent .w.wlu'+thistok.data("wlu")).eq(-1).data("w");
+	}
+	return (sb==tknOffset && wb==tknOffset);
+}
+MWEAnnotator.prototype.validate = function() {
+	var x = parseMWEMarkup($('p.sent').text().split(" "), $('.item .input').val());
+	if (typeof x==="string") {
+		$('.input').get(0).setCustomValidity(x);
+	}
+	else {
+		$('.input').get(0).setCustomValidity("");
+		//console.log(x);
+		
+		var sgroups = x[0];
+		var wgroups = x[1];
+//console.log(sgroups);
+//console.log(wgroups);
+		
+		var sGroups = [];	// indices of *multiword* groups
+		var sSets = [];	// sets of token offsets for *multiword* groups
+		
+		// clear existing groups
+		for (var j=0; j<8; j++) $('.item .sent .w').removeClass('slu'+j)
+		$('.item .sent .w').removeData("slu");
+		
+		for (var i=0; i<sgroups.length; i++) {
+			var g = sgroups[i];
+			if (sgroups.indexOf(g)!=sgroups.lastIndexOf(g)) {	// multiword group
+				if (sGroups.indexOf(g)==-1) {	// new multiword group
+					sGroups.push(g);
+					sSets.push([]);
+				}
+				sSets[sGroups.indexOf(g)].push(i);
+				$('.item .sent .w[data-w='+i+']').addClass('slu'+sGroups.indexOf(g)%8).data("slu", sGroups.indexOf(g));
+			}
+		}
+		$('.item .sgroups').val($.toJSON(sSets));
+//console.log(sSets);
+
+		var wGroups = [];	// indices of *multiword* groups
+		var wSets = [];	// sets of token offsets for *multiword* groups
+
+		// clear existing groups
+		for (var j=0; j<8; j++) $('.item .sent .w').removeClass('wlu'+j)
+		$('.item .sent .w').removeData("wlu");
+		
+		for (var i=0; i<wgroups.length; i++) {
+			var g = wgroups[i];
+			if (wgroups.indexOf(g)!=wgroups.lastIndexOf(g)) {	// multiword group
+				if (wGroups.indexOf(g)==-1) {	// new multiword group
+					wGroups.push(g);
+					wSets.push([]);
+				}
+				wSets[wGroups.indexOf(g)].push(i);
+				
+			}
+		}
+		// transitive closure over strong sets belonging to each weak set
+		for (var j=0; j<wSets.length; j++) {
+			for (var i=0; i<wSets[j].length; i++) {
+				var itok = wSets[j][i];
+				var g = sgroups[itok];
+				if (sGroups.indexOf(g)>-1) {	// this token belongs to a strong multiword group
+					var sset = sSets[sGroups.indexOf(g)];
+					for (var k=0; k<sset.length; k++) {
+						if (wSets[j].indexOf(sset[k])==-1)
+							wSets[j].push(sset[k]);	// grab another member of that same multiword group
+					}
+				}
+			}
+		}
+		// merge parts of gappy weak sets in case they contain strong sets
+		// test case: It even got a~little_worse~ during a ~business trip to the city , so on the advice of a friend I set up an appointment with True Massage .
+		var merged = [];
+		for (var j=1; j<wSets.length; j++) {
+			for (var i=0; i<wSets[j].length; i++) {
+				var itok = wSets[j][i];
+				for (var j2=0; j2<j; j2++) {
+					if (merged.indexOf(j2)==-1 && wSets[j2].indexOf(itok)>-1) {	// this token belongs to another weak multiword group (that has not already been merged)
+						for (var k=0; k<wSets[j].length; k++) {
+							if (wSets[j2].indexOf(wSets[j][k])==-1)
+								wSets[j2].push(wSets[j][k]);
+						}
+						merged.push(j);
+						break;
+					}
+				}
+				if (merged.indexOf(j)>-1) break;
+			}
+		}
+		for (var k=merged.length-1; k>=0; k--) {
+			wSets.splice(merged[k],1);
+		}
+		// filter list of weak sets to exclude exactly matching strong sets
+		for (var j=0; j<wSets.length; j++) {
+			wSets[j].sort();
+		
+			var removingeq = true;
+			while (removingeq && j<wSets.length) {
+				removingeq = false;
+				for (var k=0; k<sSets.length; k++) {
+					if (arraysEq(sSets[k], wSets[j])) {	// this exactly matches a strong grouping, so don't include it as a weak grouping
+						wSets.splice(j,1);
+						removingeq = true;
+						break;
+					}
+				}
+			}
+		}
+		
+		// display weak sets
+		for (var j=0; j<wSets.length; j++) {
+			for (var i=0; i<wSets[j].length; i++)
+				$('.item .sent .w[data-w='+wSets[j][i]+']').addClass('wlu'+j%8).data("wlu", j);
+		}
+		$('.item .wgroups').val($.toJSON(wSets));
+//console.log('weak');
+//console.log(wSets);
+	}
+}
+
+/** Creates a text box for inline annotation of tokens in the sentence. 
+    A predefined list of labels may be used for suggesting and/or constraining the annotations. */
+N_LABEL_SHORTCUTS = {
+		'LOCATION': 'L', 
+		'PERSON': 'P', 
+		'TIME': 'T', 
+		'GROUP': 'G', 
+		'ANIMAL': 'N', 
+		'FOOD': 'D', 
+		'PLANT': 'Y', 
+		'BODY': 'B', 
+		'FEELING': 'F', 
+		'ARTIFACT': 'A', 
+		'NATURAL OBJECT': 'O',
+		'SUBSTANCE': '$', 
+		'COGNITION': '^', 
+		'COMMUNICATION': 'C', 
+		'PHENOMENON': 'X', 
+		'PROCESS': 'R', 
+		'ATTRIBUTE': '@', 
+		'RELATION': '=', 
+		'MOTIVE': 'M', 
+		'POSSESSION': 'H', 
+		'SHAPE': '+', 
+		'QUANTITY': 'Q', 
+		'ACT': '!', 
+		'EVENT': 'E', 
+		'STATE': 'S', 
+		'OTHER': '_'
+};
+V_LABEL_SHORTCUTS = {
+		'body': 'b',
+		'change': 'x',
+		'cognition': 'g',
+		'communication': 'c',
+		'competition': 'v',
+		'consumption': 'd',
+		'contact': 'n',
+		'creation': 'r',
+		'emotion': 'e',
+		'motion': 'm',
+		'perception': 'p',
+		'possession': 'h',
+		'social': 'l',
+		'stative': 's',
+		'weather': 'w',
+		'`a': '`a',
+		'`j': '`j'
+};
+PREPS_MASTER = ["2", "4", "a", "abaft", "aboard", "about", "above", "abreast", "abroad", "absent", "across", 
+	"adrift", "afore", "aft", "after", "afterward", "afterwards", "against", "agin", "ago", 
+	"aground", "ahead", "aloft", "along", "alongside", "amid", "amidst", "among", "amongst", 
+	"an", "anent", "anti", "apart", "apropos", "apud", "around", "as", "ashore", "aside", 
+	"aslant", "astraddle", "astride", "asunder", "at", "athwart", "atop", "away", "back", 
+	"backward", "backwards", "bar", "barring", "before", "beforehand", "behind", "below", 
+	"beneath", "beside", "besides", "between", "betwixt", "beyond", "but", "by", "c.", "cept", 
+	"chez", "circa", "come", "concerning", "considering", "counting", "cum", "dehors", "despite", 
+	"down", "downhill", "downstage", "downstairs", "downstream", "downward", "downwards", 
+	"downwind", "during", "eastward", "eastwards", "ere", "ex", "except", "excepting", "excluding", 
+	"failing", "following", "for", "forbye", "fore", "fornent", "forth", "forward", "forwards", 
+	"frae", "from", "gainst", "given", "gone", "granted", "heavenward", "heavenwards", "hence", 
+	"henceforth", "home", "homeward", "homewards", "in", "including", "indoors", "inside", "into", 
+	"inward", "inwards", "leftward", "leftwards", "less", "like", "mid", "midst", "minus", 
+	"mod", "modulo", "mongst", "near", "nearby", "neath", "next", "nigh", "northward", "northwards", 
+	"notwithstanding", "o'", "o'er", "of", "off", "on", "onto", "onward", "onwards", "opposite", 
+	"out", "outdoors", "outside", "outta", "outward", "outwards", "outwith", "over", "overboard", 
+	"overhead", "overland", "overseas", "overtop", "pace", "past", "pending", "per", "plus", "pon", 
+	"post", "pro", "qua", "re", "regarding", "respecting", "rightward", "rightwards", "round", 
+	"sans", "save", "saving", "seaward", "seawards", "since", "skyward", "skywards", "southward", 
+	"southwards", "than", "thenceforth", "thro'", "through", "throughout", "thru", "thruout", 
+	"thwart", "'til", "till", "times", "to", "together", "touching", "toward", "towards", "under", 
+	"underfoot", "underground", "underneath", "unlike", "until", "unto", "up", "uphill", "upon", 
+	"upside", "upstage", "upstairs", "upstream", "upward", "upwards", "upwind", "v.", "versus", 
+	"via", "vice", "vis-a-vis", "vis-à-vis", "vs.", "w/", "w/i", "w/in", "w/o", "westward", 
+	"westwards", "with", "withal", "within", "without", 
+	"a cut above", "a la", "à la", "according to", "after the fashion of", "ahead of", "all for", 
+	"all over", "along with", "apart from", "as far as", "as for", "as from", "as of", 
+	"as opposed to", "as regards", 
+	"as to", "as well as", "aside from", "at a range of", "at the hand of", "at the hands of", 
+	"at the heels of", "back of", "bare of", "because of", "but for", "by courtesy of", 
+	"by dint of", "by force of", "by means of", "by reason of", "by the hand of", 
+	"by the hands of", "by the name of", "by virtue of", "by way of", "care of", "complete with", 
+	"contrary to", "courtesy of", "depending on", "due to", "except for", "exclusive of", "for all", 
+	"for the benefit of", "give or take", "having regard to", "in accord with", "in addition to", 
+	"in advance of", "in aid of", "in back of", "in bed with", "in behalf of", "in case of", 
+	"in common with", "in company with", "in connection with", "in consideration of", 
+	"in contravention of", "in default of", "in excess of", "in face of", "in favor of", 
+	"in favour of", "in front of", "in honor of", "in honour of", "in keeping with", "in lieu of", 
+	"in light of", "in line with", "in memoriam", "in need of", "in peril of", "in place of", 
+	"in proportion to", "in re", "in reference to", "in regard to", "in relation to", 
+	"in respect of", "in sight of", "in spite of", "in terms of", "in the course of", 
+	"in the face of", "in the fashion of", "in the grip of", "in the light of", "in the matter of", 
+	"in the midst of", "in the name of", "in the pay of", "in the person of", "in the shape of", 
+	"in the teeth of", "in the throes of", "in token of", "in view of", "in virtue of", 
+	"inclusive of", "inside of", "instead of", "irrespective of", "little short of", "more like", 
+	"near to", "next door to", "next to", "nothing short of", "of the name of", "of the order of", 
+	"on a level with", "on a par with", "on account of", "on behalf of", "on pain of", 
+	"on the order of", "on the part of", "on the point of", "on the score of", "on the strength of", 
+	"on the stroke of", "on top of", "other than", "out of", "out of keeping with", 
+	"out of line with", "outboard of", "outside of", "over against", "over and above", "owing to", 
+	"preparatory to", "previous to", "prior to", "pursuant to", "regardless of", "relative to", 
+	"round about", "short for", "short of", "such as", "subsequent to", "thanks to", "this side of", 
+	"to the accompaniment of", "to the tune of", "together with", "under cover of", "under pain of", 
+	"under sentence of", "under the heel of", "up against", "up and down", "up before", "up for", 
+	"up to", "upward of", "upwards of", "vis a vis", "vis à vis", "vis - a - vis", "vis - à - vis", 
+	"with reference to", "with regard to", "with respect to", "with the exception of", 
+	"within sight of",
+	"rather then", "then", "too", "nothing but", "just about", "in between", 
+	"as long as", "as soon as", "as though", "so long as"];
+PREP_SPECIAL_MW_BEGINNERS = ["a", "according", "all", "bare", "because", "but", "care", "complete", 
+"contrary", "courtesy", "depending", "due", "exclusive", "inclusive", "instead", 
+"irrespective", "just", "less", "little", "more", "next", "nothing", "other", "outboard", "owing", 
+"preparatory", "previous", "prior", "pursuant", "rather", "regardless", "relative", "short", 
+"subsequent", "such", "thanks", "this"];
+// removed "having" because it turns up false positives with "have to" (quasimodal)
+/* // Do not contain any single-word prepositions, therefore will not be matched:
+a la
+à la
+give or take
+vis a vis
+vis à vis
+vis - a - vis
+vis - à - vis
+*/
+
+PSST_LIST_OF_LABELS = ['1DTrajectory', '2DArea', '3DMedium', 'Accompanier', 'Activity',
+    'Age', 'Agent', 'Approximator', 'Attribute', 'Beneficiary',
+    'Causer', 'Circumstance', 'ClockTimeCxn', 'Co-Agent',
+    'Co-Participant', 'Co-Patient', 'Co-Theme', 'Comparison/Contrast',
+    'Contour', 'Course', 'Creator', 'DeicticTime', 'Destination',
+    'Direction', 'Donor/Speaker', 'Duration', 'Elements', 'EndState',
+    'EndTime', 'Experiencer', 'Explanation', 'Extent', 'Frequency',
+    'Function', 'Goal', 'InitialLocation', 'Instance', 'Instrument',
+    'Location', 'Locus', 'Manner', 'Material', 'Means', 'Patient',
+    'Possessor', 'ProfessionalAspect', 'Purpose', 'Quantity',
+    'Recipient', 'Reciprocation', 'RelativeTime', 'Scalar/Rank',
+    'Source', 'Species', 'StartState', 'StartTime', 'State',
+    'Stimulus', 'Superset', 'Temporal', 'Theme', 'Time', 'Topic',
+    'Transit', 'Value', 'ValueComparison', 'Via', 'Whole'];
+
+PSST_SHORT_DEFS = {
+    "1DTrajectory": "One-dimensional path that is the location traversed. {about, above, across, along, around, between, by, down, out of, over, past, round, through, up}", 
+    "2DArea": "Two-dimensional area that is the location traversed. {about, all over, around, round, throughout}", 
+    "3DMedium": "Three-dimensional medium that is traversed through. {through, with}", 
+    "Accompanier": "Entity that another entity is together with. {along with, plus, together, together with, with, without}", 
+    "Activity": "Action that an agent undertakes for a period of time. {at, in, into, on, up to, with}", 
+    "Affector": "Abstract macro-role. {}", 
+    "Age": "Something's age. {at, in, of}", 
+    "Agent": "Animate/volitional/intentional instigator of an action. {by, of}", 
+    "Approximator": "Measurement, quantity, or range being &quot;transformed&quot; by the preposition. {about, all of, around, at least, at most, between, circa, fewer than, just about, less than, like, minus, more than, over, plus, under}", 
+    "Attribute": "Characteristic, feature, part, or possessum of an entity. {about, as, by, for, in, minus, of, with, without}", 
+    "Beneficiary": "Animate or personified undergoer that is (potentially) advantaged or disadvantaged by the event or state. {against, by, for, on, to, towards, with}", 
+    "Causer": "Force/party that precipitates an event (and is a central participant of it). {by, from, of, with}", 
+    "Circumstance": "Macro-role. Used directly for occasions and contextualizations. {according to, as, as long as, as per, depending on, despite, for, in, in accord with, in accordance with, in keeping with, in line with, in spite of, per, pursuant to, regardless of, so long as, under, with, without}", 
+    "ClockTimeCxn": "In constructions for telling time, the hour part. {after, of, past, to}", 
+    "Co-Agent": "Participant acting symmetrically with the agent. {against, between, by, together, with}", 
+    "Co-Participant": "Core participant portrayed as secondary. {with}", 
+    "Co-Patient": "Undergoer symmetrical to the Patient. {between}", 
+    "Co-Theme": "Undergoer symmetrical to the Theme. {between, for, from, to, with}", 
+    "Comparison/Contrast": "Point of comparison, analogy, imitation, or contrast/distinction. {after, against, as, as if, as opposed to, as though, beside, between, from, instead of, like, more like, near, next to, of, rather than, than, to, unlike, versus}", 
+    "Configuration": "Abstract macro-role for static configurational relationships typically between nominals. {}", 
+    "Contour": "Path shape. {in}", 
+    "Course": "Pathway used for travel. {by, down, through, up, via}", 
+    "Creator": "Participant that has created something new. {by, of}", 
+    "DeicticTime": "Earlier or later time expressed by the length of an interval relative to an implicit reference time. {ago, back, before, for, in, inside, to date, within}", 
+    "Destination": "Endpoint (actual or intended) of physical motion. Excludes prepositions that also mark simple Locations. {for, into, onto, over, round, to, up to}", 
+    "Direction": "Orientation or heading of a figure, without implying a specific starting or ending point of the path. {after, apart, at, away, back, back and forth, down, home, in, into, off, out, over, together, towards, up}", 
+    "Donor/Speaker": "Animate starting point in a transfer scenario; counterpart to Recipient. {by, from}", 
+    "Duration": "Temporal length of an event, or temporally overlapping reference event. {across, as long as, down, during, for, in, in the midst of, into, over, through, throughout}", 
+    "Elements": "Member or non-member of a set of discrete items. {apart from, aside from, besides, beyond, but, except, except for, in addition to, like, minus, nothing but, of, on top of, other than, outside of, such as, with the exception of}", 
+    "EndState": "Result of a change or endpoint of a range on a scale. {into, to}", 
+    "EndTime": "When an event ends. {through, till, to, until, up to}", 
+    "Experiencer": "Patient that is aware of the event undergone (specific to events of perception). {for, to}", 
+    "Explanation": "Secondary event that is asserted as the reason for the main event. {after, as, because of, by virtue of, due to, for, on, on account of, out of, owing to, since, thanks to}", 
+    "Extent": "Size of a path. {at, at all, by, for, of, through}", 
+    "Frequency": "Temporal rate or repetitions. {after, at, by, for, over}", 
+    "Function": "The function that an entity serves, or for which it was made. {by, for, to, towards}", 
+    "Goal": "Abstract intended endpoint or outcome. {at, on, to, towards}", 
+    "InitialLocation": "Locative origin or starting point of physical motion. {from, off, out of}", 
+    "Instance": "''X '''of''' Y'', where ''X'' is a category that disambiguates or reframes (a more specific thing) ''Y''. {in, of}", 
+    "Instrument": "Thing that enables or facilitates achieving some purpose. {at, on, with, without}", 
+    "Location": "Concrete location. {about, above, across, against, ahead of, all over, among, apart, around, at, atop, away, back, before, behind, below, beneath, beside, between, beyond, by, down, downstairs, from, home, in, in front of, in the midst of, indoors, inside, inside of, near, nearby, next to, of, off, on, on top of, out, out of, outdoors, outside, outside of, over, past, round, through, throughout, to, under, up, upstairs, within, without}", 
+    "Locus": "Abstract location. {among, at, before, below, in, on, within}", 
+    "Manner": "How something happens. {by, in, on, with, without}", 
+    "Material": "Ingredients/material from which something is made. {from, of, out of}", 
+    "Means": "An activity that facilitates achieving some purpose. {by, through, via, with}", 
+    "Participant": "Abstract macro-role. {}", 
+    "Path": "Abstract region between an initial position and a final position. {}", 
+    "Patient": "Undergoer in an event that experiences a change of state, location or condition, that is causally involved or directly affected by other participants, and exists independently of the event. {in, of, on, over, to}", 
+    "Place": "Abstract macro-role. {}", 
+    "Possessor": "Possessor of an entity (including kin) or attribute. {about, behind, of, on}", 
+    "ProfessionalAspect": "Entity with which an individual is formally associated in a social/professional scenario such as employment or membership. {at, for, from, in, of, on, to, under, with}", 
+    "Purpose": "Something that somebody wants to bring about. {for, in hopes of, in hopes to, to, with a view to, with an eye to, with an eye toward, with an eye towards}", 
+    "Quantity": "X of Y, where Y is a category and X establishes how much of Y there is (or how many Ys there are). X may be an amount, collective noun, or measure phrase. {of}", 
+    "Recipient": "Animate intended recipient of something concrete or abstract. Includes addressees. {at, for, to, with}", 
+    "Reciprocation": "Action provoking a response/reaction (often judgment-laden, but not merely psychological) that is the main event. {for, to}", 
+    "RelativeTime": "Time before or after some reference point. {after, afterward, ahead of, apart, before, beforehand, between, beyond, by, past, since, towards}", 
+    "Scalar/Rank": "Point of comparison on a continuous or discrete scale (such as an ordering or ranking). {above, after, before, behind, below, beneath, beyond, for, next to, over, than, under}", 
+    "Source": "Abstract starting point. {from, off, out of}", 
+    "Species": "A category qualified by ''species'', ''breed'', ''kind'', ''type'', ''variety'', etc. {of}", 
+    "StartState": "Initial state or beginning of a range on a scale. {from, out of}", 
+    "StartTime": "Time an event begins. {from, since}", 
+    "State": "State of affairs. {all over, around, at, beyond, down, in, in need of, in search of, in the middle of, in the midst of, near, off, on, out, out of, to, under, up, up to}", 
+    "Stimulus": "That which is perceived or experienced (bodily, perceptually, or emotionally). {about, at, by, for, in, of, to, with}", 
+    "Superset": "The object of the preposition is a set of discrete elements or mass quantity of which the governor is a member, subset, or sub-quantity. {among, from, in, of, out of, outside, within}", 
+    "Temporal": "Macro-role for temporal characteristics. {by}", 
+    "Theme": "Central undergoer that is not in control over the event, not structurally changed by the event, and/or is characterized as being in a certain position or condition. {for, from, in, of, on, to, with}", 
+    "Time": "Point in time. {around, as, as soon as, at, circa, for, in, near, on}", 
+    "Topic": "Information content in communication or &quot;high-level&quot; cognition. {about, around, as regards, as to, concerning, for, in, in terms of, into, of, on, over, re, regarding, round, towards, with}", 
+    "Transit": "Conveyance/vehicle that the entity occupies in order to get from one place to another. {by}", 
+    "Traversed": "Location traversed in a path. {}", 
+    "Undergoer": "Abstract macro-role. {}", 
+    "Value": "Point on a formal scale. {at, by, for, in, into, of, per, to}", 
+    "ValueComparison": "Value being compared to some other value on a scale. {above, below, near, up to}", 
+    "Via": "Path/instrument that enables concrete or abstract entities (including information, etc.) to get from one place to another. {on, over, through, via}", 
+    "Whole": "Complete or complex whole entity. {of}"
+};
+
+
+PSST_LABELS = {"about": {"1DTrajectory": [18, "They skipped about my feet, a flock of lambs", "rotated 90 degrees clockwise about its lowest corner", "wrapped an arm about Emilia's shoulders"], 
+    "2DArea": [90, "She wore her dark hair in plaits about her head.", "she looked about the room."], 
+    "Approximator": [0, "It will take about an hour."], 
+    "Attribute": [949, "it's all about having fun"], 
+    "Location": [1, "rugs were strewn about the hall", "he produced a knife from somewhere about his person."], 
+    "Possessor": [6, "there was a look about her that said everything."], 
+    "Stimulus": [949, "I 'm still uncomfortable about the overall effect", "There was no excitement about my first bra", "There are only two possible grounds for worrying about the ownership of ICI : national security , and competition ."], 
+    "Topic": [967, "I was thinking about you", "a book about ancient Greece", "I think that 's what I liked about growing up there ((ABOUT is headed by 'what', not 'liked'))", "there's nothing we can do about it."]},
+"above": {"1DTrajectory": [3, "a cable runs above the duct."], 
+    "Location": [54, "from his flat above the corner shop", "bruises above both eyes.", "a display of fireworks above the town", "in the hills above the capital", "on the wall above the altar.", "she held her arms above her head."], 
+    "Scalar/Rank": [17, "the firm cynically chose profit above car safety.", "the food was well above average", "she married above her.", "at a level above the common people.", "he seldom spoke above a whisper", "the doorbell went unheard above the din."], 
+    "ValueComparison": [8, "above sea level."]},
+"according to": {"Circumstance": [109, "Nationwide's business is not going quite according to plan.", "cook the spaghetti according to the instructions on the pack.", "The degree of distress experienced varies according to what people expect.", "We are told that it is for a health service available to all according to their needs"], 
+    "`d": [141, "A somewhat unusual system one might think : but not according to the papal encyclical Quadragesimo Anno of 1931.", "Both sides won , according to statements when the case was called off .", "We are already well on the way to being addicted to internet gambling, according to some press reports."]},
+"across": {"1DTrajectory": [469, "the bridge (that goes) across the river", "he looked across at me", "halfway across, Jenny jumped.", "I ran across the street", "travelling across Europe", "he had swum across."], 
+    "Duration": [1, "Income inequality is known to persist across generations"], 
+    "Location": [17, "they lived across the street from one another"]},
+"after": {"ClockTimeCxn": [0, "I strolled in about ten minutes after two."], 
+    "Comparison/Contrast": [7, "a drawing after Millet's The Reapers.", "they named her Pauline, after Barbara's mother."], 
+    "Direction": [9, "she stared after him."], 
+    "Explanation": [19, "Both were crestfallen after Stevie's erratic performance", "The sergeant thought Blanche would be tired after the tension of the previous hour or two"], 
+    "Frequency": [0, "day after day we kept studying."], 
+    "RelativeTime": [60, "shortly after Christmas", "after a while he returned", "he'd gone out with his secretary for an after-work drink."], 
+    "Scalar/Rank": [0, "in their order of priorities health comes after housing."], 
+    "`": [18]},
+"afterward": {"RelativeTime": [0, "I saw him before the play, but not afterward."]},
+"against": {"Beneficiary": [21, "the first victim gave evidence against him."], 
+    "Co-Agent": [14, "the championship match against Somerset."], 
+    "Comparison/Contrast": [0, "the benefits must be weighed against the costs."], 
+    "Location": [124, "she stood with her back against the door", "frustration made him bang his head against the wall."]},
+"ago": {"DeicticTime": [0, "Grandmother died a long time ago."]},
+"ahead of": {"Location": [27, "Then a bit later there was this teeny tiny little woman walking ahead of me.", "But they believed they were protected by a front line of fighters ahead of them."], 
+    "RelativeTime": [58, "It is now expected to be completed by October, two months ahead of its scheduled date."]},
+"all of": {"Approximator": [0, "The first flight was late, so we had all of 15 minutes to make our connection."]},
+"all over": {"2DArea": [0, "I traveled all over France"], 
+    "Location": [0, "there are crumbs all over the table"], 
+    "State": [0, "I went to the party and I had women all over me."]},
+"along": {"1DTrajectory": [535, "cars were parked along the grass verge", "the path along the cliff.", "soon we were driving along a narrow road", "he saw Gray run along the top of the wall", "we continued to plod along."]},
+"along with": {"Accompanier": [221, "There were two supermarket trolleys in the pond along with plastic bags and litter.", "When Charles was a boy he would inspect the troops along with his mother or grandmother."]},
+"among": {"Location": [56, "flowers hidden among the roots of the trees", "you're among friends."], 
+    "Locus": [58, "a drop in tooth decay among children", "members of the government bickered among themselves."], 
+    "Superset": [35, "a British woman was among the 54 victims of the disaster", "snakes are among the animals most feared by man."]},
+"apart": {"Direction": [0, "Break the graham cracker apart"], 
+    "Location": [0, "We live 3 miles apart"], 
+    "RelativeTime": [0, "We were born 3 months apart"]},
+"apart from": {"Elements": [85, "Quite apart from the aforementioned lovely inhabitants, the city itself is great.", "I have substantial loans, apart from my home loan, a large chunk of which is credit card debt.", "One admits that apart from his papers, his briefcase also contains a pair of swimming trunks.", "We went to hospital to get checked out but apart from bruises we were fine.", "He had been smoking since he was 12, apart from a few years when he managed to stop while in the Army.", "According to these diagnoses the patient seems quite normal apart from having mad ideas."]},
+"around": {"1DTrajectory": [161, "he put his arm around her.", "They zigzagged around tree trunks", "Lily peeped around the open curtain", "he walked around the airfield", "it can drill around corners."], 
+    "2DArea": [235, "cycling around the village", "a number of large depots around the country."], 
+    "Approximator": [0, "It will take around an hour."], 
+    "Location": [106, "the palazzo is built around a courtyard", "the hills around the city.", "He must have parked around the front of the motel"], 
+    "State": [235, "I'll be around for another hour or so"], 
+    "Time": [21, "They left around midnight."], 
+    "Topic": [3, "our entire culture is built around those loyalties."]},
+"as": {"Attribute": [257, "it came as a shock", "she got a job as a cook."], 
+    "Circumstance": [0, "As expected, they won handily", "Here are the pictures as you requested", "As we read in chapter one of this book, the six days of creation starting in Genesis 1:2 are not the beginning of the world, but the renewal or recreation of the Earth for the second Heaven and Earth age"], 
+    "Comparison/Contrast": [0, "As in the previous episode, the protagonist again must overcome one of his phobias."], 
+    "Explanation": [0, "I will appoint him as he is most qualified for the job."], 
+    "Time": [0, "Everyone stood as the president entered."], 
+    "`": [49, "\"You know, you're AS bad AS he is\"", "\"Enough is AS good AS a feast\"", "He's AS kind AS she is funny", "There are AS few AS 3200 tigers in the wild today"]},
+"as if": {"Comparison/Contrast": [0, "He stared at me as if I were a ghost."]},
+"as long as": {"Circumstance": [0, "You can borrow this, as long as you return it next week"], 
+    "Duration": [0, "I've lived here (for) as long as you've been alive."]},
+"as opposed to": {"Comparison/Contrast": [0, "His choice of Indonesia , as opposed to the United Kingdom or the USA , as his first foreign destination was controversial", "a radial as opposed to a concentric circular structure"]},
+"as per": {"Circumstance": [0, "As per your instructions, I have enclosed an extra copy of my curriculum vitae."]},
+"as regards": {"Topic": [250, "As regards the survey data, the proof of the pudding will be clear when we see how the Home Office presents the conclusions.", "She notes that not a lot has changed in 30 years as regards the ratio of women in politics in Carlow."]},
+"as soon as": {"Time": [0, "He canceled the project as soon as he became CEO."]},
+"as though": {"Comparison/Contrast": [0, "He stared at me as though I were a ghost."]},
+"as to": {"Topic": [138, "So now I'm back home and a bit confused as to whether my visit was effective or not.", "Police are mystified as to how the thief managed to open the vehicle without using force.", "collect all relevant information from teachers as to academic ability and character"]},
+"aside from": {"Elements": [57, "The good thing is, aside from some privacy, you don't have to hear a roommate's snore.", "The exhibit spans multiple rooms and displays many works aside from the pop art he is most famous for."]},
+"at": {"Activity": [42, "boxing was the only sport I was any good at", "she was getting much better at hiding her reactions."], 
+    "Age": [1, "at fourteen he began to work as a postman."], 
+    "Direction": [41, "she clutched at the thin gown", "he hit at her face with the gun."], 
+    "Extent": [0, "This won't cost more than $100 at the worst", "At least give me a chance"], 
+    "Frequency": [44, "driving at 50 mph."], 
+    "Goal": [278, "I looked at my watch", "Leslie pointed at him", "policies aimed at reducing taxation."], 
+    "Instrument": [19, "holding a prison officer at knifepoint", "her pride had taken a beating at his hands."], 
+    "Location": [445, "they live at Conway House", "they stopped at a small trattoria."], 
+    "Locus": [0, "You can find testimonials at my website."], 
+    "ProfessionalAspect": [0, "it was at university that he first began to perform.", "baristas at Starbucks (= Starbucks baristas)"], 
+    "Recipient": [278, "He shouted something at Endill but he could n't hear because of the wind"], 
+    "State": [2, "his ready smile put her at ease", "they were at a disadvantage."], 
+    "Stimulus": [183, "shaking their heads at her foolishness", "admiration at her own acumen"], 
+    "Time": [43, "the sea is cooler at night.", "the children go to bed at nine o'clock", "his death came at a time when the movement was split."], 
+    "Value": [44, "prices start at \u00a318,500", "chanting at full volume"]},
+"at all": {"Extent": [0, "I don't like sports at all", "Are you at all hungry?"]},
+"at least": {"Approximator": [0, "It will take at least an hour."]},
+"at most": {"Approximator": [0, "It will take at most an hour."]},
+"atop": {"Location": [51, "In an instant, she was no longer in a dungeon cell but atop a hill overlooking a valley."]},
+"away": {"Direction": [0, "She swam away (from the shore).", "Charlie tried to grab the football but Lucy kicked it away.", "Lucy kicked the ball away from Charlie."], 
+    "Location": [0, "The doctor is away.", "\"Peter Pan is away from home.\""]},
+"back": {"DeicticTime": [0, "Back in the 1950s, computer input was printed on punch cards", "I saw that movie a while back"], 
+    "Direction": [0, "She swam back (to the shore).", "The dog brought the ball back."], 
+    "Location": [0, "The doctor is back."], 
+    "`r": [0, "I'm now back in shape."]},
+"back and forth": {"Direction": [0, "She swam back and forth along the length of the pool."]},
+"because of": {"Explanation": [250, "Some would even say the only reason they go to watch Tranmere is because of Iain alone.", "we closed down because of lack of interest by adults in the village.", "The loss of a handful of email messages because of a technical glitch is an irritation."]},
+"before": {"DeicticTime": [36, "his playing days had ended six years before", "it's never happened to me before."], 
+    "Location": [22, "Matilda stood before her, panting", "trotting through the city with guards running before and behind."], 
+    "Locus": [9, "he could be taken before a magistrate for punishment."], 
+    "RelativeTime": [36, "she had to rest before dinner", "the day before yesterday", "they lived rough for four days before they were arrested"], 
+    "Scalar/Rank": [0, "a woman who placed duty before all else", "they would die before they would cooperate with each other."]},
+"beforehand": {"RelativeTime": [0, "I saw him after the play, but not beforehand."]},
+"behind": {"Location": [182, "we were stuck behind a slow-moving tractor.", "the recording machinery was kept behind screens", "the sun came out from behind a cloud."], 
+    "Possessor": [0, "the agony behind his decision to retire."], 
+    "Scalar/Rank": [0, "Woosnam moved to ten under par, five shots behind Fred Couples.", "the government admitted it is ten years behind the West in PC technology."]},
+"below": {"Location": [27, "Most older houses will have a crawl space below the boards.", "A deep cut could penetrate to the fatty layer below the skin."], 
+    "Locus": [18, "Please refer to the subsection below for details."], 
+    "Scalar/Rank": [121, "Apollyon was his Second Lieutenant, ranking below only Lady Alysia and the Prince himself.", "There are countless examples of conduct by high profile sports stars that fall well below community standards."], 
+    "ValueComparison": [115, "below 50 mph"]},
+"beneath": {"Location": [83, "the ancient city has lain hidden beneath the sea for 2,000 years.", "beneath this floor there's a cellar", "her eyes had dark shadows beneath them.", "the labyrinths beneath central Moscow."], 
+    "Scalar/Rank": [0, "he was relegated to the rank beneath theirs.", "she's in love with a man who is rather beneath her."]},
+"beside": {"Comparison/Contrast": [0, "beside Paula she always felt clumsy."], 
+    "Location": [91, "he sat beside me in the front seat", "the table beside the bed."]},
+"besides": {"Elements": [247, "She couldn't remember a time where anyone she knew besides her family had seen her in a dress.", "Candidates were asked which nation, besides Canada, concerns them the most."]},
+"between": {"1DTrajectory": [129, "the dog crawled between us and lay down at our feet", "those who travel by train between London and Paris."], 
+    "Approximator": [7, "a man aged between 18 and 30", "between 25 and 40 per cent off children's clothes."], 
+    "Co-Agent": [148, "negotiations between Russia, Ukraine, and Romania.", "the wars between Russia and Poland."], 
+    "Co-Patient": [64, "a collision in mid-air between two light aircraft"], 
+    "Co-Theme": [148, "links between science and industry", "such policies would create division between the two communities"], 
+    "Comparison/Contrast": [9, "the difference between income and expenditure."], 
+    "Location": [129, "the border between Mexico and the United States"], 
+    "RelativeTime": [1, "they snack between meals", "the long, cold nights between autumn and spring."]},
+"beyond": {"Elements": [0, "Beyond telling me to find new friends, Shelley was hinting that I was unattractive.", "They achieved nothing beyond deepening the passionate hatred of our country in those corners of the globe."], 
+    "Location": [0, "There was one handhold but it was a few inches beyond my reach.", "Behind the cabin was a large empty yard"], 
+    "RelativeTime": [11, "Screening continued beyond midnight"], 
+    "Scalar/Rank": [0, "And it was true that the exhausting task we had set ourselves was in some ways far beyond what ordinary rickshaw drivers ever attempted.", "A few of us decided to get together and try and raise money above and beyond what people had already kindly donated.", "You are also exhibiting obesity beyond the legal limit.", "The staff was beyond impeccable"], 
+    "State": [0, "Land and water resources are stretched beyond limits due to our burgeoning population."]},
+"but": {"Elements": [0, "In fact, I have no alternative but to fine her a crisp crunchie for being just too good to be true.", "She was too shaken and frightened to do anything else but feel safe in the arms of Peter Grayson.", "So I didn't have any alternative then but to get up in front of everyone and attempt to play the thing.", "If we want vehicles to be less polluting, then we have no choice but to find an alternative fuel.", "On some London high streets it is becoming difficult to go food shopping anywhere but Tesco."]},
+"by": {"1DTrajectory": [0, "I drove by our house."], 
+    "Agent": [406, "the door was opened by my cousin Annie", "a clear decision by the electorate", "years of hard fund-raising work by local people."], 
+    "Attribute": [20, "a breakdown of employment figures by age and occupation."], 
+    "Beneficiary": [0, "she had done her duty by him."], 
+    "Causer": [98, "damage caused by fire.", "rights guaranteed by law"], 
+    "Co-Agent": [0, "Richard is his son by his third wife."], 
+    "Course": [37, "travelling by road to Aylsham."], 
+    "Creator": [53, "a book by Ernest Hemingway."], 
+    "Donor/Speaker": [0, "anything you do is all right by me"], 
+    "Extent": [69, "the shot missed her by miles", "the raising of VAT by 2.5%."], 
+    "Frequency": [0, "colours changing minute by minute", "the risk becomes worse by the day."], 
+    "Function": [2, "what is meant by \"fair\"?"], 
+    "Location": [40, "remains were discovered by the roadside", "the pram was by the dresser."], 
+    "Manner": [0, "I heard by chance that she has married again", "Anderson, by contrast, rejects this view", "she ate by candlelight.", "it was the least he could do, by God", "I swear by Almighty God."], 
+    "Means": [127, "malaria can be controlled by attacking the parasite", "they substantiate their opinions by the use of precise textual reference", "they plan to provide further working capital by means of borrowing."], 
+    "RelativeTime": [1, "I've got to do this report by Monday", "by now Kelly needed extensive physiotherapy."], 
+    "Stimulus": [98, "we were surprised by her comments"], 
+    "Temporal": [1, "this animal always hunts by night."], 
+    "Transit": [37, "the cost of travelling by bus"], 
+    "Value": [0, "billing is by the minute", "the drunken yobbos who turned up by the cartload.", "a map measuring 400 by 600 mm", "she multiplied it by 89."]},
+"by virtue of": {"Explanation": [250, "The 64 runs that took him to 103 came by virtue of 14 fours and a six and a six and two singles.", "We felt kinda out of place here by virtue of not wearing polished shoes, smart pants and a designer shirt.", "Diana was a non-entity who achieved greatness through marriage, and by virtue of her beauty."]},
+"circa": {"Approximator": [0, "The ancient church dates to circa 1000 A.D."], 
+    "Time": [0, "We arrived at 5 and left circa 7."]},
+"concerning": {"Topic": [250, "He writes extensively on subjects concerning cross-strait relations and Chinese politics."]},
+"depending on": {"Circumstance": [242, "They were given an allowance depending on their need and what was available"]},
+"despite": {"Circumstance": [250, "I've never really been one for graphs and charts, despite being a bit of a maths geek."]},
+"down": {"1DTrajectory": [230, "up and down the stairs", "tears streaming down her face."], 
+    "Course": [254, "They will then set off down the mighty River Mersey on the start of their adventure.", "I wandered down the road."], 
+    "Direction": [0, "The bird flew down from the tree.", "Lucy threw the ball down (to the ground)."], 
+    "Duration": [0, "astrologers down the ages."], 
+    "Location": [254, "she was tired of going down the pub every night.", "I often see him down the pub", "(he lives) a dozen miles or so down the Thames", "he lived down the street"], 
+    "State": [0, "The NASDAQ was down an hour before the closing bell", "The servers are down", "I am feeling down today"]},
+"downstairs": {"Location": [0, "The kids are downstairs."]},
+"due to": {"Explanation": [20, "The delay was due to a lack of scaffolding.", "She also found signs of hypoxic damage to nerve cells due to lack of oxygen before death.", "It too was cancelled, this time on the previous day, due to the lack of a full panel.", "It refers to a blue tinge seen on the surface of the whole or part of the body, due to lack of oxygen in the blood.", "As it is, their jokes fall flat and it is not due to any lack of talent by the artists involved."]},
+"during": {"Duration": [120, "the restaurant is open during the day", "the period during which he grew to adulthood.", "the stabbing took place during a row at a party."]},
+"except": {"Elements": [105, "In 2000, Al Gore. did not win a single one of these states except New Mexico."]},
+"except for": {"Elements": [250, "Everything is very quiet, except for the occasional floomfing sound of snow falling off pine trees and cedars.", "The media coverage is always sensationalized here in the US except for possibly Public Radio."]},
+"fewer than": {"Approximator": [0, "In this version of the story there are fewer than 4 Horsemen of the Apocalypse."]},
+"for": {"Attribute": [381, "the ride screens children for height"], 
+    "Beneficiary": [337, "Eating healthy food is good/expensive/important for students ((semantically, adj. takes a predicate AND a participant as arguments))", "troops who had fought for Napoleon", "the High Court found for the Commissioner", "I got a present for you", "these parents aren't speaking for everyone."], 
+    "Circumstance": [385, "I had peanut butter for lunch", "she wants a bike for Christmas"], 
+    "Co-Theme": [17, "swap these two bottles for that one."], 
+    "DeicticTime": [65, "I haven't seen him for some time."], 
+    "Destination": [8, "they are leaving for London tomorrow."], 
+    "Duration": [65, "he was jailed for 12 years"], 
+    "Experiencer": [204, "I want to see for myself", "It is difficult/enjoyable for students to eat gourmet food ((students experience difficulty/joy))", "it was a significant victory for Hussein"], 
+    "Explanation": [385, "Aileen is proud of her family for their support", "I could dance and sing for joy.", "He criticized Bevin for lack of imagination", "grief for a friend killed by right-wing vigilantes"], 
+    "Extent": [0, "he crawled for 300 yards."], 
+    "Frequency": [0, "the camcorder failed for the third time."], 
+    "Function": [395, "the \"F\" is for Fascinating.", "networks for the exchange of information", "a great night for a party", "It's time for new leadership", "a coupon for peanut butter"], 
+    "ProfessionalAspect": [28, "she is a tutor for the Open University."], 
+    "Purpose": [766, "Blackbeard seemed ready to murder us for a wallet with a few fivers in it", "I went to the store for eggs", "We hired a caterer for the party", "physical therapy for a leg injury", "the necessary tools for making a picture frame."], 
+    "Recipient": [133, "I see your ladyship has no very important commands for me"], 
+    "Reciprocation": [385, "Miss Parker said she thanked God for high cheek bones"], 
+    "Scalar/Rank": [37, "she was tall for her age", "warm weather for the time of year."], 
+    "Stimulus": [133, "admiration for Sarah", "appreciation for alliteration", "contempt for dull issues like club discipline"], 
+    "Theme": [575, "the demand for money", "she is responsible for the efficient running of their department", "setting minimum prices for Japanese memory chips sold in Europe", "We will do it to express our derision for this Treasury bench of limpets ((speech act))", "you have a great desire for solitude", "charge higher prices for goods bought by credit card", "Sheldukher fumbled for his laser pistol", "phone for a taxi", "be undeterred in your search for the possible dream"], 
+    "Time": [8, "schedule it for 5:00"], 
+    "Topic": [44, "they voted for independence in a referendum.", "they are arguing for a delay"], 
+    "Value": [23, "copies are available for \u00a31.20.", "they will repair it for $100"], 
+    "`": [160, "It is rare/foolish for students to eat gourmet food ((semantically, adj. characterizes event as a whole, though a participant may be syntactically extracted))"]},
+"from": {"Causer": [71, "a child suffering from (= afflicted with/by) asthma.", "die from cancer"], 
+    "Co-Theme": [351, "estranged from their families"], 
+    "Comparison/Contrast": [26, "anything from geography to literature.", "they are the subject-matter of most stories and novels from Pooh to Proust", "these fees are quite distinct from expenses."], 
+    "Donor/Speaker": [555, "an admission from the defendant", "the comment from Bertrand Russell", "she demanded the keys from her husband.", "the court sought briefs from the parties"], 
+    "InitialLocation": [1272, "she began to walk away from him", "I leapt from my bed", "I'm from Hackney", "recent emigrants from southern India", "split a bough from a tree", "such foods should be totally eliminated from a healthy eating plan"], 
+    "Location": [467, "the ambush occurred 50 metres from a checkpoint.", "you can see the island from here", "the ability to see things from another's point of view.", "she rang him from the hotel", "the railway from Albert Street"], 
+    "Material": [16, "a paint made from a natural resin."], 
+    "ProfessionalAspect": [539, "take lessons from John", "Mary from human resources"], 
+    "Source": [731, "information obtained from papers, books, and presentations.", "I had a manicure from Rachel", "We got terrible service from this restaurant", "someone I know from work", "everyone is from the same team", "the representative from my district", "men who ranged in age from seventeen to eighty-four."], 
+    "StartState": [878, "he was turning the Chamberlain government away from appeasement.", "Pat is recovering from scarlet fever.", "A tug at his trouser leg awakened him from his reverie", "the party was ousted from power after sixteen years.", "escape from poverty", "take land from indigenous people", "East German departure from the Warsaw Pact"], 
+    "StartTime": [12, "the show will run from 10 a.m. to 2 p.m.", "a document dating from the thirteenth century."], 
+    "Superset": [430, "there are several options to choose from"], 
+    "Theme": [11, "the story of how he was saved from death.", "The agents preventing activists from boarding planes were assisted by the airlines.", "Thus the women of Cyrene abstained from veal", "campaign to protect the trees from a surprise attack by council workmen"]},
+"home": {"Direction": [0, "She flew home to Boston."], 
+    "Location": [0, "She stayed home"]},
+"in": {"Activity": [542, "many scientists were involved in putting a man on the moon", "they were prompt in their response"], 
+    "Age": [142, "a woman in her thirties."], 
+    "Attribute": [319, "Mozart's Piano Concerto in E flat.", "a fairly new satin blouse in kingfisher-blue", "a chestnut-brown sweater in fine wool", "Trouserless men looked absurd in socks.", "no discernible difference in quality.", "say it in French", "put it in writing."], 
+    "Circumstance": [16, "In announcing the program, Computershare pointed out the environmental benefits of reducing the use of valuable resources such as trees.", "He was unsuccessful in running for president"], 
+    "Contour": [124, "If at any point they lose the scent they fly in zig-zags", "Planets move in ellipses around the sun", "shaking his thumb in the direction of the sleeping animals"], 
+    "DeicticTime": [100, "I hadn't seen him in years.", "I'll see you in fifteen minutes."], 
+    "Direction": [0, "The bird flew in (=inside).", "cover the well so Timmy won't fall in", "the fog rolled in (from the sea) overnight", "the boat drifted in toward the shore", "hold your stomach in"], 
+    "Duration": [0, "John was here in 45 minutes after I called"], 
+    "Instance": [0, "You've got a friend in me.", "He's met his match in her."], 
+    "Location": [1019, "I'm living in London", "she saw the bus in the rear-view mirror.", "\"Put it in a box and mark it 'fra-gilee'.\"", "don't put coal in the bath", "he got in his car and drove off.", "The doctor is in."], 
+    "Locus": [331, "I read it in a book", "acting in a film."], 
+    "Manner": [124, "cruel in the extreme", "he frowned in what he hoped was a manly, intent manner", "He smiled in a benevolent sort of way"], 
+    "Patient": [211, "an increase in oil prices"], 
+    "ProfessionalAspect": [28, "she works in publishing."], 
+    "State": [142, "to be in love", "I've got to put my affairs in order"], 
+    "Stimulus": [211, "I 'm disappointed in you !"], 
+    "Superset": [331, "everyone in our lunch group plays golf", "Perhaps only one in twenty of the city's adult residents had been born there."], 
+    "Theme": [768, "\"I'm covered in bees!\""], 
+    "Time": [98, "they met in 1885", "at one o'clock in the morning", "In my life I have never seen so many cats on a couch", "the leaders met for the 8th time in 6 weeks"], 
+    "Topic": [211, "an increased public interest in issues of defence , disarmament and peace"], 
+    "Value": [0, "a local income tax running at six pence in the pound."]},
+"in accord with": {"Circumstance": [109, "staff members are acting in accord with procedure", "To be truly fashionable, the union argued, clothing had to be produced in accord with standards of decency."]},
+"in accordance with": {"Circumstance": [0, "Personal data shall be processed in accordance with the rights of data subjects under this Act."]},
+"in addition to": {"Elements": [250, "Those explosions are in addition to a number of bomb threats in the city each week.", "He received a two-year sentence which he will serve in addition to his current jail term."]},
+"in front of": {"Location": [88, "Christie noticed a sleek black car parked in front of her house.", "I found that I liked to program sitting in front of a computer"]},
+"in hopes of": {"Purpose": [0, "I bought a lottery ticket in hopes of retiring early."]},
+"in hopes to": {"Purpose": [0, "I bought a lottery ticket in hopes to retire early."]},
+"in keeping with": {"Circumstance": [0, "This is a noble sentiment and entirely in keeping with the true spirit of the Olympics."]},
+"in line with": {"Circumstance": [236, "This has been our policy for some time and is in line with most other train companies' policies.", "It is boosting production of its malaria drug in line with sharply increased demand."]},
+"in need of": {"State": [0, "The three-bedroom house comprises 102 square metres of accommodation and is in need of refurbishment.", "Yet I feel in need of a cool drink at the end of an unbelievably stressful week."]},
+"in search of": {"State": [0, "I went to several stores in search of a nice pair of slippers."]},
+"in spite of": {"Circumstance": [250, "Leila had known it was a good idea to get a gardener, in spite of what others said."]},
+"in terms of": {"Topic": [250, "In terms of diversity, students said they had more opportunities to talk with students who had different backgrounds."]},
+"in the middle of": {"State": [0, "I'm in the middle of a bath, so you'll have to wait."]},
+"in the midst of": {"Duration": [89, "Nithard wrote in the midst of war ."], 
+    "Location": [42, "It is not in the midst of the town , but a little way to the west , on the river-bank .", "another who is standing in the midst of the dancers"], 
+    "State": [89, "Elsewhere he renewed his contacts with Bishop Jocelin of Wells , then in the midst of rebuilding the cathedral church in Wells ."]},
+"indoors": {"Location": [0, "The kids are indoors."]},
+"inside": {"DeicticTime": [0, "the oven will have paid for itself inside 18 months."], 
+    "Location": [86, "he went inside Graves and scored near the post.", "a radio was playing inside the flat", "Mr Jackson is waiting for you inside.", "Anatoly reached inside his shirt and brought out a map", "we walked inside."]},
+"inside of": {"Location": [17, "They had never told us they were going to build a studio inside of our house.", "\"Outside of a dog, a book is a man's best friend. Inside of a dog it's too dark to read.\""]},
+"instead of": {"Comparison/Contrast": [0, "Take the stairs instead of the lift to add a few extra steps to your daily regime.", "He also has to show that he can be a useful member of society instead of being regarded as a parasite."]},
+"into": {"Activity": [0, "he's into surfing and jet-skiing."], 
+    "Destination": [896, "the narrow road which led down into the village.", "cover the bowl and put it into the fridge", "Sara got into her car and shut the door.", "he crashed into a parked car."], 
+    "Direction": [35, "with the wind blowing into your face", "sobbing into her skirt."], 
+    "Duration": [3, "shopping goes on into the evening"], 
+    "EndState": [137, "they forced the club into a humiliating special general meeting.", "a peaceful protest which turned into a violent confrontation", "the fruit can be made into jam."], 
+    "Topic": [10, "a clearer insight into what is involved", "an inquiry into the squad's practices."], 
+    "Value": [0, "three into twelve goes four."]},
+"just about": {"Approximator": [0, "the project is just about done", "\"I've had just about enough of this. That parrot is definitely deceased.\""]},
+"less than": {"Approximator": [0, "In this version of the story there are less than 4 Horsemen of the Apocalypse."]},
+"like": {"Approximator": [0, "It cost like $10."], 
+    "Comparison/Contrast": [366, "he used to have a car like mine", "they were like brothers", "she looked nothing like Audrey Hepburn.", "he was screaming like a banshee.", "students were angry at being treated like children.", "It seems like the proposal encountered objections from management", "I feel like I ate a cow"], 
+    "Elements": [2, "the cautionary vision of works like Animal Farm and 1984."], 
+    "`d": [0, "He is, like, the biggest bully."]},
+"minus": {"Approximator": [5, "Bills for winter heating came to 200 for gas during a particularly cold month last year when temperatures dropped below minus 20 degrees."], 
+    "Attribute": [65, "I decided on the outfit Mattie had made me wear while we were in Florida. minus the shorts.", "Eventually he was given the machine back, minus its disc - which had apparently been destroyed."], 
+    "Elements": [65, "all the Rumanians now living in Austria and Turkey (minus Rumanian Jews)"]},
+"more like": {"Comparison/Contrast": [0, "Shops were empty from panic-buying ahead of Czechoslovakia 's ` big bang ' -- which is turning out to be more like a big pop .", "This would not be a case of losing valuable seconds to get to the fire but more like quite a few minutes.", "The Toronto Star, the Globe, the Post, and even the CBC were saying 15,000 protestors, when the day-to-day estimates were more like 60,000 to 80,000."]},
+"more than": {"Approximator": [0, "In this version of the story there are more than 4 Horsemen of the Apocalypse."]},
+"near": {"Comparison/Contrast": [0], 
+    "Location": [205, "Far away in the distance somewhere back near the Cork road, hooters blared angrily as road rage mounted.", "We had a home made wooden sledge and we took the crates and put it on the sledge and took them round to the houses near where we lived.", "Lita asked and pointed to a figure in the distance, near the exit of the park."], 
+    "State": [0, "The other two photographs are closer, and shows many birds dead, some near death and very few still standing.", "He was losing weight at a dramatic rate and many of his closest friends feared he might be near death.", "The rest were alive, but affected by the low temperatures and were near dead due to freezing."], 
+    "Time": [5, "In early 1973 there were signs that this gloomy period was near its end.", "For a brief period near the end of the half, Ireland exerted pressure.", "Annoying for anyone that has recently paid for it, but not so bad for those of us who are near the end of our subscription period.", "Kelly could not keep out the Redskins for much longer and Wayne Trunchion scored a fourth goal near the end of the second period.", "Below were essay questions that were to be filled out near the end of the quarter."], 
+    "ValueComparison": [4, "Agar-agar gels are unique in withstanding temperatures near boiling point.", "We here in Seattle had record temperatures,, somewhere near 100 degrees,, whew!", "All of these showed saturation at PPFD levels near or below those listed in Table 1.", "No other European power came near this degree of commitment to overseas expansion and empire in the nineteenth century.", "Where possible try to take landmarks that intercept at as near ninety degrees as possible."]},
+"nearby": {"Location": [0, "He lives nearby.", "He lives in a nearby town.", "The thresh machine was put up on the first peanut field and then nearby the farm house"]},
+"next to": {"Comparison/Contrast": [0, "Compared with Spain it is garbage, next to Italy it is humble and alongside Germany it stands as an equal."], 
+    "Location": [0, "Position this next to a north facing window"], 
+    "Scalar/Rank": [0, "Purchasing a vehicle is the second biggest purchase a woman is likely to make next to buying a home."]},
+"nothing but": {"Elements": [0, "\"I have nothing but contempt for these people.\""]},
+"of": {"Age": [6, "a boy of 15."], 
+    "Agent": [273, "the decision of the County Council."], 
+    "Attribute": [29, "A faint frown of doubt brought Lucenzo 's brows together .", "He is a gentleman of complete integrity"], 
+    "Causer": [67, "he died of cancer."], 
+    "ClockTimeCxn": [0, "it would be just a quarter of three in New York."], 
+    "Comparison/Contrast": [0, "I'm more of a baseball fan than a soccer fan"], 
+    "Creator": [18, "the plays of Shakespeare", "the paintings of Rembrandt."], 
+    "Elements": [86, "our allies consist of the NATO countries, Canada, and Australia"], 
+    "Extent": [12, "an increase of 5%"], 
+    "Instance": [559, "the city of Prague", "the idea/task/hassle of opening a new business", "the topic/issue of semantics", "my misfortune of ordering the wrong things"], 
+    "Location": [0, "north of Watford.", "within spitting distance of the saloon"], 
+    "Material": [86, "the house was built of bricks", "walls of stone."], 
+    "Patient": [909, "the murder of two boys"], 
+    "Possessor": [1208, "it was kind of you to ask", "the son of a friend", "the government of India", "The smug foolishness of the Western leaders was typified by the British participants.", "What was the time of the party?", "the opinion of the directors"], 
+    "ProfessionalAspect": [775, "a former colleague of John's.", "members of the board"], 
+    "Quantity": [1222, "a bag of popcorn", "a group of people wearing hats", "She has a lot of charm", "a sheet of paper"], 
+    "Species": [36, "One of the best types of ant to keep is the red ant .", "certain strains of Escherichia coli", "Modern breeds of these homing pigeons return reliably", "Some poor sap applied the wrong brand of paint", "This store offers a wide selection of footstools"], 
+    "Stimulus": [67, "fear of bears", "proud of our accomplishments"], 
+    "Superset": [1135, "nine/all/lots/a bunch of the students in the class came to the show", "10% of American men are left-handed", "hundreds of dollars", "Some of the carbon dioxide has leaked", "the days of the week."], 
+    "Theme": [1000, "payment of his debts", "He cleared it of leaves ((removal verbs))"], 
+    "Topic": [1060, "I am certain of that.", "Let bards sing now of barbiturates as bright as violets . ((statement verbs))", "These she would learn of only through other people . ((hearing/learning verbs))", "a photograph of the bride", "I don't know of anything that would be suitable.", "Hobbes conceived of what he called a state of nature.", "All three were convinced of his innocence."], 
+    "Value": [12, "a height of 10 metres."], 
+    "Whole": [1135, "a third/none of the pie is left", "the sleeve of his coat", "in the back of the car", "the headquarters of the company", "the last hour of the game"]},
+"off": {"Direction": [176, "rinse off detergent/rinse detergent off (intr. particle)"], 
+    "InitialLocation": [223, "he rolled off the bed", "the coat slipped off his arms", "trying to get us off the stage.", "single wires leading off the main lines", "threatening to tear the door off its hinges", "it's a huge burden off my shoulders.", "pluck him off the mountain"], 
+    "Location": [19, "anchoring off Blue Bay", "six miles off Dunkirk.", "in a little street off Whitehall."], 
+    "Source": [176, "they knocked $2,000 off the price"], 
+    "State": [0, "I took a couple of days off work.", "he managed to stay off alcohol."]},
+"on": {"Activity": [3, "his attendant was out on errands."], 
+    "Beneficiary": [49, "But is this fair on clients who are vulnerable and in need?", "it would be all too convenient to blame everything on the absent Miss Philimore", "the courts have been too lenient on Dr Courtney"], 
+    "Explanation": [93, "We went to war on bad intelligence"], 
+    "Goal": [86, "five air raids on Schweinfurt", "thousands marching on Washington", "her eyes were fixed on his dark profile."], 
+    "Instrument": [41, "The horse reared back on its hind legs"], 
+    "Location": [606, "we got on the train.", "a scratch on her arm", "a smile on her face.", "an internment camp on the island", "the house on the corner.", "on the table was a water jug", "she was lying on the floor", "a sign on the front gate.", "put it on the table.", "she kissed me on the cheek", "John got some sleep on the plane.", "put your ideas down on paper"], 
+    "Locus": [30, "he was on his way to see his mother.", "we met on a trip/vacation/journey/expedition/mission to Paris", "stored on the client's own computer.", "charge it on my credit card"], 
+    "Manner": [134, "soon the bird was strong enough to fly on its own", "he was lying on his back.", "the box fell on its side"], 
+    "Patient": [86, "the mechanic worked on the engine", "nosh on snacks"], 
+    "Possessor": [1, "she only had a few pounds on her.", "that outfit looks good on you"], 
+    "ProfessionalAspect": [0, "they would be allowed to serve on committees."], 
+    "State": [99, "You're on your own.", "he is on morphine to relieve the pain."], 
+    "Theme": [86, "spend a lot of money on textbooks"], 
+    "Time": [48, "she was booed on arriving home.", "reported on September 26", "on a very hot evening in July."], 
+    "Topic": [362, "a book on careers.", "a constitution modelled on America's."], 
+    "Via": [10, "a new twelve-part TV series on Channel 4."]},
+"on account of": {"Explanation": [242, "It is understood her sentence was cut to 12 years on account of her guilty plea.", "Traffic accidents continue to claim a large number of lives on account of several factors.", "As a result of this, I have not been able to take any time off on account of not feeling well.", "We had decided to go down the river first, on account of car parking.", "The need for the Thames Estuary sea forts arose in the last war on account of the mining of our waters with magnetic mines."]},
+"on top of": {"Elements": [36, "And you may be charged an additional fee on top of the room rates.", "On top of this benefit, recent evidence suggests that eating rye bread can lower cholesterol levels too."], 
+    "Location": [46, "Like most families, they wanted enough space so they wouldn't feel they were living on top of each other.", "Finally on the way home we saw a shopping trolley perched on top of a stop sign.", "Normally, asphalt road surfaces are built on top of a bed of concrete"]},
+"onto": {"Destination": [175, "Survivors ran screaming onto the street", "It is only dangerous if you attempt to climb up onto the wall", "I got onto the train to go home.", "a small strip of tape designed to stick firmly onto skin"]},
+"other than": {"Elements": [0, "Site owners with a primary language other than English need efficient English copy writers and editors."]},
+"out": {"Direction": [0, "With this weather, it isn't safe to go out (=outside).", "I put a nickel into the machine and a gumball came out.", "He took a good drag off the Arturo Fuente and let the smoke waft out from between pursed lips."], 
+    "Location": [0, "\"He should not be here / when your mother is out!\"", "He lives out in the boonies", "I've always wanted to move out West"], 
+    "State": [0, "Yer out!", "the light is out"]},
+"out of": {"1DTrajectory": [0, "He climbed back out of the window"], 
+    "Explanation": [2, "Police have said he acted out of spite", "He said he was motivated to find his son's attackers not out of revenge but to get justice for Daniel"], 
+    "InitialLocation": [0, "Then, without a word, he stormed out of the room, slamming the door shut as he went.", "I grabbed a piece of toast and let myself out of the house.", "the single narrow road that led out of the forest."], 
+    "Location": [0, "We picked up a hitchhiker about ten miles out of town."], 
+    "Material": [0, "Fashioned out of rich black walnut, the chair is as much art as it is furniture."], 
+    "Source": [0, "If that alone was the only benefit they got out of the lesson, then you would say it was very worthwhile.", "Pensioners like us have paid into the NHS all our lives and we should not have to pay for treatment out of our savings."], 
+    "StartState": [0, "She was fresh out of college and looking for a job"], 
+    "State": [0, "My guess is that it was never released over here, so I may be out of luck.", "It would appear that we're out of gas.", "they stayed out of sight", "the lift is out of order"], 
+    "Superset": [19, "Nine times out of ten this is a big mistake.", "On a day when the fixture list was badly hit by the weather, only nine matches were played out of 19 scheduled.", "To pass the examinations a score of 6 out of ten had to be achieved."]},
+"outdoors": {"Location": [0, "The kids are outdoors."]},
+"outside": {"Location": [0, "The only home score came when full-back Leigh Hinton came up outside his winger to make the extra man.", "The same boy is standing outside a school waiting to be collected.", "He was running towards a little boy outside an open door, down the hall.", "I should have said that all the kids who either went into the sewer or stood outside the sewer were boys.", "My friend had a car stolen by a gang of boys outside Starbucks.", "The crowd was now situated right outside her door, with the Duke's coach not too far away."], 
+    "Superset": [0, "She warmly thanked the many members both in and outside the committee who have given sterling service over the year.", "This is an experience that cannot be replicated outside a university or something at least akin to it."]},
+"outside of": {"Elements": [0, "He accepts that, outside of a handful of top flight clubs, few will have his take-home pay.", "It dawned on me that we hadn't actually sat opposite each other outside of a scene from the play before then.", "\"Outside of a dog, a book is a man's best friend. Inside of a dog it's too dark to read.\""], 
+    "Location": [0, "I saw all the commotion outside of your house and I didn't know what happened.", "I don't ever want to step outside of his classroom, so I'll go wherever he goes."]},
+"over": {"1DTrajectory": [56, "he toppled over the side of the boat.", "she trudged over the lawn.", "glance over her shoulder"], 
+    "Approximator": [0, "over 40 degrees C", "they've been married for over a year."], 
+    "Destination": [2, "They broke a chair over me ."], 
+    "Direction": [0, "We often walk over on Saturdays."], 
+    "Duration": [4, "you've given us a lot of heartache over the years", "she told me over coffee."], 
+    "Frequency": [0, "If you fail you may take the test over."], 
+    "Location": [115, "I saw flames over Berlin", "cook the sauce over a moderate heat.", "over the hill is a small village.", "his flat was over the shop.", "an oxygen tent over the bed", "ladle this sauce over fresh pasta.", "views over Hyde Park.", "The horses are grazing over by the farmhouse."], 
+    "Patient": [24, "editorial control over what is included"], 
+    "Scalar/Rank": [1, "the predominance of Asian over African managers in the sample.", "he shouted over the noise of the taxis.", "over him is the financial director.", "I'd choose the well-known brand over that one."], 
+    "Topic": [110, "a heated debate over unemployment."], 
+    "Via": [0, "a voice came over the loudspeaker."]},
+"owing to": {"Explanation": [240, "However, this was put on the backburner owing to difficult market conditions at that time.", "One of the buses on Wednesday night, owing to engine trouble, got held up at Mountfalcon.", "However, throughout the world, the cost of fish has increased owing to reduced yields.", "We only ever got as far as a turkey farm six miles down the road, and it took over four hours to get there owing to the fact that neither of us knew how to drive a lorry.", "This sentiment will seem less of a cliche to us than to other classes, owing to the tragic events of the past year."]},
+"past": {"1DTrajectory": [66, "the horse and rider rode past the town's gates.", "the track climbed through forest and past a small waterfall.", "he decided to drive past my house"], 
+    "ClockTimeCxn": [30, "I got back from Lucca at half past midnight this morning", "we started at 20 to 5 and finished at 10 past 5."], 
+    "Location": [0, "The large bathroom lies further along the hall, past a sizable storage cupboard."], 
+    "RelativeTime": [30, "He kept us up until well past 4am", "I intend to continue practicing law past my 65th birthday"]},
+"per": {"Circumstance": [0, "Per your instructions, I have enclosed an extra copy of my curriculum vitae."], 
+    "Value": [243, "the cost of repainting was expressed in terms of a rate per square metre."]},
+"plus": {"Accompanier": [157, "The townhouse comprises 18 main rooms plus a kitchen"], 
+    "Approximator": [0, "Mornings would see me waking to my fancy alarm clock's digital readout of a temperature of a tooth-chattering plus three Celsius.", "The repairs will take a week plus."]},
+"pursuant to": {"Circumstance": [0, "Likewise, an application under Part 32.14, is made pursuant to and in accordance with the Civil Procedure Rules."]},
+"rather than": {"Comparison/Contrast": [0, "I want soup rather than salad"]},
+"re": {"Topic": [14]},
+"regarding": {"Topic": [209, "He raised several concerns regarding the proposed tuition hikes"]},
+"regardless of": {"Circumstance": [250, "Acne can affect men and women of all ages regardless of skin type or lifestyle.", "Both councillors said regardless of the signs in place, people did not always follow them."]},
+"round": {"1DTrajectory": [154, "he wrapped the blanket round him", "she drew a red circle round his name.", "a bus appeared round the corner.", "Angus put an arm round Flora and kissed her.", "The car swung round a corner into the dusty main road", "I stepped round him and went back to the house"], 
+    "2DArea": [90, "she went round the house and saw that all the windows were barred."], 
+    "Destination": [0, "if he didn't shut up he might get a clip round the ear."], 
+    "Location": [131, "camel drivers squatting round their early morning fires", "the area round the school", "with shifting sands all round me.", "Steven parked the car round the corner."], 
+    "Topic": [4, "the text is built round real practical examples."]},
+"since": {"Explanation": [0, "Since you like animal movies, let's watch 'Ratatouille'."], 
+    "RelativeTime": [242, "It was the British who suffered the worst single incident since the end of the war."], 
+    "StartTime": [242, "They are on a mission, a task that they have been training for since they entered the Army.", "For that reason clarinets have been built since their early days in different keys."]},
+"so long as": {"Circumstance": [0, "You can borrow this, so long as you return it next week"]},
+"such as": {"Elements": [0, "institutions such as the family and marriage"]},
+"than": {"Comparison/Contrast": [0, "we would rather be able to see than be blind", "the show was different than what I expected", "the musical was more Cole Porter than Gilbert and Sullivan"], 
+    "Scalar/Rank": [0, "Our council tax is much higher than in larger towns", "we hope to register even more participants than last year.", "It turned out to be better in looks than taste", "everything is worse than it was", "The sight was far less dismaying than the thought of going out of the house .", "He likes getting in on the act too and has appeared in more productions than he cares to count.", "On one occasion a female passenger leaned on him for more than just a friendly chat."]},
+"thanks to": {"Explanation": [0, "Not for much longer , however , thanks to those statisticians .", "Tobacco profits jumped 16 % , thanks to the growth in smoking in less well-off parts of the world .", "Here , however , I 've got no complaint , thanks to the mad Steely and Clevie dub on the B-side ."]},
+"through": {"1DTrajectory": [368, "the lorry smashed through a brick wall", "a cucumber, slit, but not right through.", "the sun was streaming in through the window", "the glass in the front door where the moonlight streamed through.", "stepping boldly through the doorway", "as soon as we opened the gate they came streaming through.", "flipping through the pages of a notebook", "she read the letter through carefully.", "Josh tucked his arm companionably through hers", "he'd hooked his umbrella through the handles of the handbag and pulled it out"], 
+    "3DMedium": [210, "The sap flowed easily through her veins .", "making my way through the guests."], 
+    "Course": [27, "Westbourne estimated the chances of escape through the kitchen.", "dioxins get into mothers' milk through contaminated food."], 
+    "Duration": [9, "the goal came midway through the second half", "to struggle through until pay day.", "we sat through some very boring speeches", "she's been through a bad time", "Karl will see you through, Ingrid."], 
+    "EndTime": [0, "they will be in London from March 24 through May 7."], 
+    "Extent": [3, "each joint can move through an angle within fixed limits.", "rotate them through 90 degrees"], 
+    "Location": [11, "the approach to the church is through a gate."], 
+    "Means": [12, "rehabilitating older public-sector estates through a programme of co-operation with local authorities"], 
+    "Via": [26, "freedom of expression through words", "seeking justice through the proper channels."]},
+"throughout": {"2DArea": [87, "Before long the story spread throughout the city of the crazy man who had purchased a dream."], 
+    "Duration": [113, "Trained personal advisors will be on standby throughout the exam results period."], 
+    "Location": [87, "He also pointed out that wandering dogs did a lot of damage to sheep throughout the country.", "The severe heat has resulted in a record number of deaths throughout the East Coast."]},
+"till": {"EndTime": [0]},
+"to": {"Beneficiary": [703, "you were terribly unkind to her", "priced to be affordable to domestic users", "She was rude to Larry Hagman"], 
+    "ClockTimeCxn": [0, "it's five to ten."], 
+    "Co-Theme": [148, "he is married to his cousin Emma", "he had left his dog tied to a drainpipe", "they are inextricably linked to this island."], 
+    "Comparison/Contrast": [0, "the club's nothing to what it once was.", "they are the subject-matter of most stories and novels from Pooh to Proust"], 
+    "Destination": [587, "walking down to the shops", "my first visit to Africa.", "every driveway to the castle was crowded", "emigrants to South Africa"], 
+    "EndState": [160, "Christopher's expression changed from amazement to joy", "she was close to tears.", "they spiced the soup to my liking", "smashed to smithereens.", "a drop in profits from \u00a3105 m to around \u00a375 m", "to her astonishment, he smiled."], 
+    "EndTime": [0, "from 1938 to 1945."], 
+    "Experiencer": [132, "speed altogether surprising to Miss Buckley"], 
+    "Function": [0, "a shoulder to cry on", "a reason to live", "a good person to work with"], 
+    "Goal": [571, "charge it to my credit card"], 
+    "Location": [8, "(He lives) forty miles to the south of the site", "place the cursor to the left of the first word."], 
+    "Patient": [132, "made a repair to the air conditioning"], 
+    "ProfessionalAspect": [41, "he's economic adviser to the president."], 
+    "Purpose": [0, "He rose to make a speech"], 
+    "Recipient": [571, "John told the news to Mary", "they donated \u00a3400 to the hospice."], 
+    "Reciprocation": [112, "an answer to the question", "India's swift reaction to the \"provocation\" by Pakistan"], 
+    "State": [2, "the order was to our satisfaction"], 
+    "Stimulus": [112, "listen to the music"], 
+    "Theme": [112, "a threat to world peace", "a reference to Psalm 22:18."], 
+    "Value": [0, "my car only does ten miles to the gallon.", "ten to the minus thirty-three."], 
+    "`d": [0, "To be honest, I thought this book was boring."], 
+    "`i": [0, "I want to suck your blood", "To win is my greatest desire", "I am happy to meet you halfway", "It took them 2 hours to finish the repairs", "She always takes the time to mentor her students"]},
+"to date": {"DeicticTime": [0, "To date, nobody has returned my calls."]},
+"together": {"Accompanier": [0, "The cats are together on the windowsill"], 
+    "Co-Agent": [0, "Jim and I enjoy doing business together"], 
+    "Direction": [0, "Bring the pieces together"]},
+"together with": {"Accompanier": [225, "One of the older girls brought in tea together with the rich fruit cake on a plate."]},
+"towards": {"Beneficiary": [14, "he was warm and tender towards her"], 
+    "Direction": [276, "they drove towards the German frontier."], 
+    "Function": [0, "the council provided a grant towards the cost of new buses."], 
+    "Goal": [2, "moves towards EU political and monetary union."], 
+    "RelativeTime": [0, "towards the end of April."], 
+    "Topic": [14, "our attitude towards death."]},
+"under": {"Approximator": [0, "Jacques Chirac, the right wing president, scraped just under 20 percent of the vote.", "The majority of cases in Angola have occurred in children under the age of five years.", "Which meant if I ran the second half at the same speed I would have finished in under four hours."], 
+    "Circumstance": [0, "All four youths were arrested under the Explosives Act and taken to Fulford Police Station."], 
+    "Location": [0, "Pity the display was directly under the departures board which had a long list of delayed and cancelled trains.", "Richey is looking forward to experiencing the things we take for granted, such as feeling grass under his feet.", "I had three layers on under my thick winter coat.", "He recently began to put gold and silver metal leaf under the paint", "Another had lain on a chaise lounge for four days, his stockinged feet poking out from under a quilt.", "Fruit cell turgors were obtained by probing the mesocarp cells directly under the fruit epidermis.", "The cat thought it was great fun and climbed under the duvet with me.", "He landed in an old storage room somewhere under the museum, where he was he had no idea.", "Dropping forward onto the walkway around the hold it is possible to swim into the crew's quarters under the chart room.", "The luggage compartment floor is on two levels, under which the rear seat base can be stowed."], 
+    "ProfessionalAspect": [0, "They have both been studying for five years under Academy founder Richard Smith."], 
+    "Scalar/Rank": [0, "I learned long ago that I had to give the managers under me the ability to make mistakes or I'd lose good people."], 
+    "State": [9, "a program that allows you to run windows apps under linux", "In both the US and UK the novel will be published under the name Michael Marshall.", "You'll find it in your filing cabinet under \"A\" for \"anal\".", "Petipa ran the company during the late 19th century, when Russia was under the rule of the Czars.", "under British rule", "Those living under an oppressive regime may have good reason to seek this level of online privacy.", "The US occupation authority has placed the city under what amounts to martial law.", "The right to anonymity on Internet bulletin boards is under threat again.", "Nursing and support staff do a wonderful job but are constantly under pressure from ever dwindling resources.", "It will work by using steam, fed under pressure, to break down organic waste and sterilise metals and plastics.", "The process put us under a lot of stress", "These trees can start producing fruit within about six years under the right conditions.", "I don't think of us are under any illusions about those elections.", "Ponten confirmed the organization's web site has been under attack since the raids.", "There is a new rollercoaster under construction at Disney's Animal Kingdom.", "Employees who are under investigation for alleged breaches of conduct are not allowed union representation at interviews with management.", "What was the Citizen's Charter if it was not public service reform under a different badge?", "Smith is under contract but probably will be asked to take a pay cut or face being released."]},
+"unlike": {"Comparison/Contrast": [0, "The trouble those people are in is unlike anything that has ever happened to this country before, including 9 / 11.", "She was there to be the volunteer coordinator of the women's centre, and unlike other government and contract workers, planned to be in the community for a long time."]},
+"until": {"EndTime": [194, "As soon as the flames go out, add the cider and boil until the liquid has reduced by half.", "You never quite know how a poem sounds until your hear it coming out of a pair of speakers.", "By the way you only have until the end of September to lend your support to this idea.", "If you want to book a seat in it you'll have to wait until April as they're all booked up.", "The rules are due to change but until then it still pays you to keep your mileage up."]},
+"up": {"1DTrajectory": [0, "She pushed her glasses further up the bridge of her nose.", "I don't know where we were, but I wanted to climb up a really steep hill - which seemed to take ages.", "We picked our way up one side of the ridge, and I found a spot where we could spend the long night ahead.", "She shrieked with laughter as they raced up the stairs.", "Calleri is one of several Argentines moving steadily up the rankings."], 
+    "Course": [1, "In 1866 the U.S.S. General Sherman sailed up the Taedong River to Pyongyang.", "Last summer I made a trip up the Amazon basin in Peru.", "Then one of them led him up the garden path to a shed ."], 
+    "Direction": [0, "The bird flew up into the tree.", "Lucy tossed the ball up (in the air)."], 
+    "Location": [1, "Gould 's brother-in-law 's station , 160 miles from Newcastle on the coast up the Hunter River at Yarrundi , far exceeded Gould 's expectations both in size and in beauty .", "I lived just up the street from them.", "Then we went up the pub and stayed there until midnight.", "Fancy going up the shops?", "He was such a lovely lad, would often see him up the pub"], 
+    "State": [0, "Is he up yet, or still sleeping?", "The NASDAQ was up an hour before the closing bell", "The servers are back up", "I am feeling up today"]},
+"up to": {"Activity": [0, "I wonder what he's up to ?", "A real poker player would quickly realize what you were up to and stop falling for it."], 
+    "Destination": [0, "The flood water reached up to the middle of the car wheels", "the ice gave way, plunging Luke into the water up to his waist.", "The shutters were firmly closed, but, as in many old houses, they did not reach right up to the very top of the window."], 
+    "EndTime": [16, "If we have survived up to now what is stopping us from surviving in the future?"], 
+    "State": [0, "The choice of grid is up to the artist, as is the color of each of the grid's cells.", "But is it the government's duty, or is it up to individuals to take responsibility for their eating?", "Mentally I was not up to the challenge of traveling to Australia.", "I wasn't feeling up to going out, so I spent quite a bit of time listening to music.", "He's good at speeches, and this one was up to his usual standard."], 
+    "ValueComparison": [41, "The Board have offered to make a contribution to our cost up to a maximum of $50,000."]},
+"upstairs": {"Location": [0, "The kids are upstairs."]},
+"versus": {"Comparison/Contrast": [0, "More detailed studies are needed on the costs of rural versus urban car usage."]},
+"via": {"Course": [73, "Tomorrow we are travelling home via Harrogate where we will call to see Daisy's other sister Janet.", "Entry to the field is via a forestry road and will be sign-posted from the A170."], 
+    "Means": [122, "And you have condemned countless numbers of your own citizens to death via the death penalty."], 
+    "Via": [171, "Daily now, postwoman Julie Harris is delivering a handful of cards for him, via his minders on the ground.", "Messages can also be sent via email by completing an online form here."]},
+"with": {"3DMedium": [0, "marine mammals generally swim with the current."], 
+    "Accompanier": [274, "a nice steak with a bottle of red wine.", "Boris still lives with his parents"], 
+    "Activity": [286, "Matilda was great with maths"], 
+    "Attribute": [112, "he's in bed with the flu.", "a small man with thick glasses.", "a man with a knife", "I returned with the receipt", "a flower-sprigged blouse with a white collar."], 
+    "Beneficiary": [286, "my father will be angry with me.", "you have been patient with me"], 
+    "Causer": [16, "wisdom comes with age."], 
+    "Circumstance": [0, "Ferns look wonderful with diffused sunlight shining through their foliage .", "With markets on the rise, investors are optimistic."], 
+    "Co-Agent": [124, "a row broke out with another man.", "I often chat with strangers on the Internet"], 
+    "Co-Participant": [274, "He shares a last name with me"], 
+    "Co-Theme": [286, "continued supply of arms to one side is incompatible with neutrality", "replace the old tires with new ones", "they confused my order with someone else's"], 
+    "Instrument": [261, "cut the fish with a knife", "treatment with acid before analysis."], 
+    "Manner": [73, "the people shouted with pleasure."], 
+    "Means": [261, "It also made him want to heal her wounds with a kiss .", "retaliate with vicious shootings"], 
+    "ProfessionalAspect": [11, "I bank with the TSB.", "she's with the Inland Revenue now."], 
+    "Recipient": [286, "Jairus pleaded with Jesus to cure his twelve-year-old daughter", "I tried to reason with her"], 
+    "Stimulus": [146, "he was trembling with fear.", "the teacher was unhappy with the student's work", "We had a terrible experience with Comcast"], 
+    "Theme": [717, "\"The tail I could live with, but the fleas\u2014they're murder!\"", "Faith was done with old-fashioned equipment", "fill the bowl with water."], 
+    "Topic": [303, "He is familiar with the property market", "Irina had been brisk when she called with the news and told him to telephone Rakovsky at his hotel ."]},
+"with a view to": {"Purpose": [0, "I bought a lottery ticket with a view to retire early."]},
+"with an eye to": {"Purpose": [0, "I bought a lottery ticket with an eye to retire early."]},
+"with an eye toward": {"Purpose": [0, "I bought a lottery ticket with an eye toward early retirement."]},
+"with an eye towards": {"Purpose": [0, "I bought a lottery ticket with an eye towards early retirement."]},
+"with the exception of": {"Elements": [250, "Everyone at the meeting with the exception of one was in agreement.", "The two teams were on their feet for the best part of two and a half hours, with the exception of the interval break."]},
+"within": {"DeicticTime": [38, "The first show sold out within hours of tickets going on sale."], 
+    "Location": [15, "Good to see a local hangout that's within staggering distance home if you're totally mangled.", "Mr Bradbury said people should know better than to start any sort of fire within a forest", "The plan states that new retail development is most suitably located within the city centre.", "The Slieve Bloom mountains and a number of forest parks are within easy reach."], 
+    "Locus": [0, "Language evolves but, necessarily, within the bounds of shared comprehension."], 
+    "Superset": [4, "However, appointing Milburn may well be the spark that lights the fire of civil war within the Party.", "For the next hundred years, the argument would be within the centre-left"]},
+"without": {"Accompanier": [0, "Others never venture into the outside world without a chaperone."], 
+    "Attribute": [0, "True, it is hard to live without the comforts of this world.", "The risk of death in a house fire is three times higher in homes without smoke alarms."], 
+    "Circumstance": [0, "I got put on hold twice without saying a word"], 
+    "Instrument": [0, "They have to light a fire without matches"], 
+    "Location": [0], 
+    "Manner": [0, "a magic man who walks through fire without being burned.", "It is very sad that these people can't manage an hour or so without smoking."]}
+};
+
+
+
+
+function buildTooltipStrings() {
+	result = {};
+	Object.keys(PSST_LABELS).forEach(function (p) {
+		Object.keys(PSST_LABELS[p]).forEach(function (sst) {
+			if (result[sst]===undefined) {
+				result[sst] = {};
+			}
+			var examplesL = PSST_LABELS[p][sst].slice(1);
+			for (var i=0; i<examplesL.length; i++) {	// for each example, capitalize the target preposition
+				// (heuristically identified as the last matching word)
+				examplesL[i] = examplesL[i].replace(new RegExp("(.*)\\b"+p+"\\b", "i"), "$1"+p.toUpperCase());
+			}
+			result[sst][p] = examplesL.join(' | ');
+			if (PSST_SHORT_DEFS[sst]!==undefined)
+				result[sst][p] += '\n\n'+PSST_SHORT_DEFS[sst];
+		});
+	});
+	return result;
+}
+PSST_LEX_LABEL_DESCRIPTIONS = buildTooltipStrings();
+// normalization/aliases
+// after buildTooltipStrings(), so OUT OF is correctly capitalized in examples whether filed under 'out' or 'out of'
+PSST_LABELS["2"] = PSST_LABELS["to"];
+PSST_LABELS["rather then"] = PSST_LABELS["rather than"];
+Object.keys(PSST_LEX_LABEL_DESCRIPTIONS).forEach(function (sst) {
+	if (PSST_LEX_LABEL_DESCRIPTIONS[sst]["to"]) 
+		PSST_LEX_LABEL_DESCRIPTIONS[sst]["2"] = PSST_LEX_LABEL_DESCRIPTIONS[sst]["to"];
+	if (PSST_LEX_LABEL_DESCRIPTIONS[sst]["for"])
+		PSST_LEX_LABEL_DESCRIPTIONS[sst]["4"] = PSST_LEX_LABEL_DESCRIPTIONS[sst]["for"];
+	if (PSST_LEX_LABEL_DESCRIPTIONS[sst]["between"])
+		PSST_LEX_LABEL_DESCRIPTIONS[sst]["in between"] = PSST_LEX_LABEL_DESCRIPTIONS[sst]["between"];
+	if (PSST_LEX_LABEL_DESCRIPTIONS[sst]["out of"])
+		PSST_LEX_LABEL_DESCRIPTIONS[sst]["out"] = PSST_LEX_LABEL_DESCRIPTIONS[sst]["out of"];
+	if (PSST_LEX_LABEL_DESCRIPTIONS[sst]["rather than"])
+		PSST_LEX_LABEL_DESCRIPTIONS[sst]["rather then"] = PSST_LEX_LABEL_DESCRIPTIONS[sst]["rather than"];
+	if (PSST_LEX_LABEL_DESCRIPTIONS[sst]["through"])
+		PSST_LEX_LABEL_DESCRIPTIONS[sst]["thru"] = PSST_LEX_LABEL_DESCRIPTIONS[sst]["through"];
+});
+
+PSST_TOP_LABELS = {"about": ["Topic", "Stimulus", "Attribute", "2DArea", "1DTrajectory", "Possessor", "Location", "Approximator"],
+    "above": ["Location", "Scalar/Rank", "ValueComparison", "1DTrajectory"],
+    "according to": ["`d", "Circumstance"],
+    "across": ["1DTrajectory", "Location", "Duration"],
+    "after": ["RelativeTime", "Explanation", "`", "Direction", "Comparison/Contrast", "Scalar/Rank", "Frequency", "ClockTimeCxn"],
+    "afterward": ["RelativeTime"],
+    "against": ["Location", "Beneficiary", "Co-Agent", "Comparison/Contrast"],
+    "ago": ["DeicticTime"],
+    "ahead of": ["RelativeTime", "Location"],
+    "all of": ["Approximator"],
+    "all over": ["State", "Location", "2DArea"],
+    "along": ["1DTrajectory"],
+    "along with": ["Accompanier"],
+    "among": ["Locus", "Location", "Superset"],
+    "apart": ["RelativeTime", "Location", "Direction"],
+    "apart from": ["Elements"],
+    "around": ["State", "2DArea", "1DTrajectory", "Location", "Time", "Topic", "Approximator"],
+    "as": ["Attribute", "`", "Time", "Explanation", "Comparison/Contrast", "Circumstance"],
+    "as if": ["Comparison/Contrast"],
+    "as long as": ["Duration", "Circumstance"],
+    "as opposed to": ["Comparison/Contrast"],
+    "as per": ["Circumstance"],
+    "as regards": ["Topic"],
+    "as soon as": ["Time"],
+    "as though": ["Comparison/Contrast"],
+    "as to": ["Topic"],
+    "aside from": ["Elements"],
+    "at": ["Location", "Recipient", "Goal", "Stimulus", "Value", "Frequency", "Time", "Activity", "Direction", "Instrument", "State", "Age", "ProfessionalAspect", "Locus", "Extent"],
+    "at all": ["Extent"],
+    "at least": ["Approximator"],
+    "at most": ["Approximator"],
+    "atop": ["Location"],
+    "away": ["Location", "Direction"],
+    "back": ["`r", "Location", "Direction", "DeicticTime"],
+    "back and forth": ["Direction"],
+    "because of": ["Explanation"],
+    "before": ["RelativeTime", "DeicticTime", "Location", "Locus", "Scalar/Rank"],
+    "beforehand": ["RelativeTime"],
+    "behind": ["Location", "Scalar/Rank", "Possessor"],
+    "below": ["Scalar/Rank", "ValueComparison", "Location", "Locus"],
+    "beneath": ["Location", "Scalar/Rank"],
+    "beside": ["Location", "Comparison/Contrast"],
+    "besides": ["Elements"],
+    "between": ["Co-Theme", "Co-Agent", "Location", "1DTrajectory", "Co-Patient", "Comparison/Contrast", "Approximator", "RelativeTime"],
+    "beyond": ["RelativeTime", "State", "Scalar/Rank", "Location", "Elements"],
+    "but": ["Elements"],
+    "by": ["Agent", "Means", "Stimulus", "Causer", "Extent", "Creator", "Location", "Transit", "Course", "Attribute", "Function", "Temporal", "RelativeTime", "Value", "Manner", "Frequency", "Donor/Speaker", "Co-Agent", "Beneficiary", "1DTrajectory"],
+    "by virtue of": ["Explanation"],
+    "circa": ["Time", "Approximator"],
+    "concerning": ["Topic"],
+    "depending on": ["Circumstance"],
+    "despite": ["Circumstance"],
+    "down": ["Location", "Course", "1DTrajectory", "State", "Duration", "Direction"],
+    "downstairs": ["Location"],
+    "due to": ["Explanation"],
+    "during": ["Duration"],
+    "except": ["Elements"],
+    "except for": ["Elements"],
+    "fewer than": ["Approximator"],
+    "for": ["Purpose", "Theme", "Function", "Reciprocation", "Explanation", "Circumstance", "Attribute", "Beneficiary", "Experiencer", "`", "Stimulus", "Recipient", "Duration", "DeicticTime", "Topic", "Scalar/Rank", "ProfessionalAspect", "Value", "Co-Theme", "Time", "Destination", "Frequency", "Extent"],
+    "from": ["InitialLocation", "StartState", "Source", "Donor/Speaker", "ProfessionalAspect", "Location", "Superset", "Co-Theme", "Causer", "Comparison/Contrast", "Material", "StartTime", "Theme"],
+    "home": ["Location", "Direction"],
+    "in": ["Location", "Theme", "Activity", "Superset", "Locus", "Attribute", "Topic", "Stimulus", "Patient", "State", "Age", "Manner", "Contour", "DeicticTime", "Time", "ProfessionalAspect", "Circumstance", "Value", "Instance", "Duration", "Direction"],
+    "in accord with": ["Circumstance"],
+    "in accordance with": ["Circumstance"],
+    "in addition to": ["Elements"],
+    "in front of": ["Location"],
+    "in hopes of": ["Purpose"],
+    "in hopes to": ["Purpose"],
+    "in keeping with": ["Circumstance"],
+    "in line with": ["Circumstance"],
+    "in need of": ["State"],
+    "in search of": ["State"],
+    "in spite of": ["Circumstance"],
+    "in terms of": ["Topic"],
+    "in the middle of": ["State"],
+    "in the midst of": ["State", "Duration", "Location"],
+    "indoors": ["Location"],
+    "inside": ["Location", "DeicticTime"],
+    "inside of": ["Location"],
+    "instead of": ["Comparison/Contrast"],
+    "into": ["Destination", "EndState", "Direction", "Topic", "Duration", "Value", "Activity"],
+    "just about": ["Approximator"],
+    "less than": ["Approximator"],
+    "like": ["Comparison/Contrast", "Elements", "`d", "Approximator"],
+    "minus": ["Elements", "Attribute", "Approximator"],
+    "more like": ["Comparison/Contrast"],
+    "more than": ["Approximator"],
+    "near": ["Location", "Time", "ValueComparison", "State", "Comparison/Contrast"],
+    "nearby": ["Location"],
+    "next to": ["Scalar/Rank", "Location", "Comparison/Contrast"],
+    "nothing but": ["Elements"],
+    "of": ["Quantity", "Possessor", "Whole", "Superset", "Topic", "Theme", "Patient", "ProfessionalAspect", "Instance", "Agent", "Material", "Elements", "Stimulus", "Causer", "Species", "Attribute", "Creator", "Value", "Extent", "Age", "Location", "Comparison/Contrast", "ClockTimeCxn"],
+    "off": ["InitialLocation", "Source", "Direction", "Location", "State"],
+    "on": ["Location", "Topic", "Manner", "State", "Explanation", "Theme", "Patient", "Goal", "Beneficiary", "Time", "Instrument", "Locus", "Via", "Activity", "Possessor", "ProfessionalAspect"],
+    "on account of": ["Explanation"],
+    "on top of": ["Location", "Elements"],
+    "onto": ["Destination"],
+    "other than": ["Elements"],
+    "out": ["State", "Location", "Direction"],
+    "out of": ["Superset", "Explanation", "State", "StartState", "Source", "Material", "Location", "InitialLocation", "1DTrajectory"],
+    "outdoors": ["Location"],
+    "outside": ["Superset", "Location"],
+    "outside of": ["Location", "Elements"],
+    "over": ["Location", "Topic", "1DTrajectory", "Patient", "Duration", "Destination", "Scalar/Rank", "Via", "Frequency", "Direction", "Approximator"],
+    "owing to": ["Explanation"],
+    "past": ["1DTrajectory", "RelativeTime", "ClockTimeCxn", "Location"],
+    "per": ["Value", "Circumstance"],
+    "plus": ["Accompanier", "Approximator"],
+    "pursuant to": ["Circumstance"],
+    "rather than": ["Comparison/Contrast"],
+    "re": ["Topic"],
+    "regarding": ["Topic"],
+    "regardless of": ["Circumstance"],
+    "round": ["1DTrajectory", "Location", "2DArea", "Topic", "Destination"],
+    "since": ["StartTime", "RelativeTime", "Explanation"],
+    "so long as": ["Circumstance"],
+    "such as": ["Elements"],
+    "than": ["Scalar/Rank", "Comparison/Contrast"],
+    "thanks to": ["Explanation"],
+    "through": ["1DTrajectory", "3DMedium", "Course", "Via", "Means", "Location", "Duration", "Extent", "EndTime"],
+    "throughout": ["Duration", "Location", "2DArea"],
+    "till": ["EndTime"],
+    "to": ["Beneficiary", "Destination", "Recipient", "Goal", "EndState", "Co-Theme", "Patient", "Experiencer", "Theme", "Stimulus", "Reciprocation", "ProfessionalAspect", "Location", "State", "`i", "`d", "Value", "Purpose", "Function", "EndTime", "Comparison/Contrast", "ClockTimeCxn"],
+    "to date": ["DeicticTime"],
+    "together": ["Direction", "Co-Agent", "Accompanier"],
+    "together with": ["Accompanier"],
+    "towards": ["Direction", "Topic", "Beneficiary", "Goal", "RelativeTime", "Function"],
+    "under": ["State", "Scalar/Rank", "ProfessionalAspect", "Location", "Circumstance", "Approximator"],
+    "unlike": ["Comparison/Contrast"],
+    "until": ["EndTime"],
+    "up": ["Location", "Course", "State", "Direction", "1DTrajectory"],
+    "up to": ["ValueComparison", "EndTime", "State", "Destination", "Activity"],
+    "upstairs": ["Location"],
+    "versus": ["Comparison/Contrast"],
+    "via": ["Via", "Means", "Course"],
+    "with": ["Theme", "Topic", "Recipient", "Co-Theme", "Beneficiary", "Activity", "Co-Participant", "Accompanier", "Means", "Instrument", "Stimulus", "Co-Agent", "Attribute", "Manner", "Causer", "ProfessionalAspect", "Circumstance", "3DMedium"],
+    "with a view to": ["Purpose"],
+    "with an eye to": ["Purpose"],
+    "with an eye toward": ["Purpose"],
+    "with an eye towards": ["Purpose"],
+    "with the exception of": ["Elements"],
+    "within": ["DeicticTime", "Location", "Superset", "Locus"],
+    "without": ["Manner", "Location", "Instrument", "Circumstance", "Attribute", "Accompanier"]
+};
+
+
+// normalization of aliases
+PSST_TOP_LABELS["2"] = PSST_TOP_LABELS["to"];
+PSST_TOP_LABELS["4"] = PSST_TOP_LABELS["for"];
+PSST_TOP_LABELS["in between"] = PSST_TOP_LABELS["between"];
+PSST_TOP_LABELS["rather then"] = PSST_TOP_LABELS["rather than"];
+PSST_TOP_LABELS["out"] = PSST_TOP_LABELS["out"].concat(PSST_TOP_LABELS["out of"]);
+PSST_TOP_LABELS["thru"] = PSST_TOP_LABELS["through"];
+
+SRIKUMAR_LABELS = ['Activity','Age','Agent','Attribute','Beneficiary','Cause','ClockTimeCxn','Co-Particiants','DeicticTime','Destination','Direction',
+				   'Duration','EndState','EndTime','Experiencer','Frequency','Instrument','Location','Manner','MediumOfCommunication','Numeric',
+				   'ObjectOfVerb','Opponent/Contrast','Other','PartWhole','Participant/Accompanier','PhysicalSupport',
+				   'Possessor','ProfessionalAspect','Purpose','RelativeTime','Recipient',
+				   'Separation','Source','Species','StartState','StartTime',
+				   'Temporal','Time','Topic','Via','`','`i','?'];
+SRIKUMAR_TOP_LABELS = {
+'about':['Location','Possessor','Time','Topic'],
+'above':['Location','Other'],
+'across':['Duration','Location'],
+'after':['Beneficiary','Cause','ClockTimeCxn','Direction','Frequency','ObjectOfVerb','Other','RelativeTime'],
+'against':['Opponent/Contrast','Other','PhysicalSupport'],
+'along':['Direction','Location','Manner'],
+'among':['Choices','Location','PartWhole'],
+'around':['Location','Time','Topic'],
+'as':['Attribute','Other'],
+'at':['Activity','Age','Attribute','Cause','Frequency','Instrument','Location','Numeric','ObjectOfVerb','ProfessionalAspect','Time'],
+'before':['Location','Other','RelativeTime'],
+'behind':['Beneficiary','Cause','Direction','Location','Other','Temporal'],
+'beneath':['Location','Other'],
+'beside':['Location','Other'],
+'between':['Choices','Location','Numeric','Opponent/Contrast','RelativeTime'],
+'by':['Age','Agent','Attribute','Direction','Frequency','Instrument','Location','Numeric','Other','Possessor','RelativeTime','Source','Temporal','Via'],
+'down':['Direction','Location','Temporal'],
+'during':['Duration'],
+'for':['Beneficiary','Cause','Destination','DeicticTime','Duration','Numeric','ObjectOfVerb','Other','ProfessionalAspect','Purpose'],
+'from':['Agent','Attribute','Cause','Location','ObjectOfVerb','Opponent/Contrast','Separation','Source','StartState','StartTime','Temporal'],
+'in':['Activity','Attribute','Destination','DeicticTime','Duration','Location','Manner','MediumOfCommunication','PartWhole','ProfessionalAspect','Time'],
+'inside':['DeicticTime','Destination','Location','Other','PartWhole'],
+'into':['Activity','Destination','Duration','EndState','Location','Numeric','Topic'],
+'like':['Manner','Other'],
+'of':['Age','Attribute','Cause','ClockTimeCxn','Location','Numeric','ObjectOfVerb','PartWhole','Possessor','Source','Species'],
+'off':['Direction','Location','Separation'],
+'on':['Activity','Experiencer','Instrument','Location','MediumOfCommunication','Numeric','Other','PhysicalSupport','Possessor','ProfessionalAspect','Time','Topic','Via'],
+'onto':['Location','PhysicalSupport','Via'],
+'over':['Duration','Instrument','Location','ObjectOfVerb','Other','Topic'],
+'round':['Location','ObjectOfVerb','Topic'],
+'through':['Activity','Duration','EndTime','Instrument','Location','Manner','ObjectOfVerb','Via'],
+'to':['Activity','Beneficiary','ClockTimeCxn','Destination','EndState','EndTime','Location','Numeric','ObjectOfVerb','Other','Participant/Accompanier','Recipient'],
+'toward':['Direction','EndState','Experiencer','ObjectOfVerb','RelativeTime'],
+'towards':['Direction','EndState','Experiencer','ObjectOfVerb','RelativeTime'],
+'with':['Attribute','Cause','Direction','Instrument','Manner','ObjectOfVerb','Opponent/Contrast','Other','Participant/Accompanier','ProfessionalAspect','Separation']
+};
+SRIKUMAR_LABEL_DESCRIPTIONS = {"PhysicalSupport": "The object of the preposition is physically in contact with and supports the governor or a subject of the governor if the governor is a verb or nominalization. \"stood with her back against the wall\", \"a water jug on the table\"",
+"Temporal": "Supercategory for all temporal senses (refer to Temporal Hierarchy). The object of the preposition specifies the time of when an event occurs, either as an explicit temporal expression or by indicating another event as a reference. \"shortly after Christmas\", \"cooler at night\", \"met in 1985\"",
+"Duration": "Period or length of time over which something takes place: \"slept for hours\", \"ate in 20 minutes\", \"during/throughout the party\", \"into/over/across/through the years\"",
+"Frequency": "Rate of repetition or progress: \"at 25mph/a steady clip\", \"day by/after day\"",
+"Age": "How old someone or something is: \"at/by 40\", \"a child of 5\"", 
+"Time": "Time or event marking the time when something happens: \"at noon\", \"on Friday\", \"on/upon arrival\", \"in the morning\", \"around/about/near midnight\"", 
+"RelativeTime": "Time or event marking the time relative to which something happens: \"I ate before/after/since noon\", \"dozens of competitions will take place between the opening and closing ceremonies\", \"towards/by 8:00\"",
+"StartTime": "Time or event marking the time when something begins: \"from 8 a.m.\", \"I have been depressed (ever) since the election\"",
+"EndTime": "Time or event marking the time when something ends: \"to 5 p.m.\", \"until noon\", \"The festival runs through (the end of the day) Thursday\"",
+"DeicticTime": "Time interval relative to the present time when something takes place: \"20 minutes ago/hence\"; \"within/inside 3 months (from now)\"; \"in 20 minutes (from now)\"; \"haven't eaten in/for 3 hours (before now)\"",
+"ClockTimeCxn": "Offset of minutes to hour when telling time: \"10 of/after/to/till noon\"",
+ "Destination": "The object of the preposition is the destination of the motion indicated by the governor. \"put coal in the bath\", \"Sara got into her car\", \"walking to the shops\"",
+ "Beneficiary": "The object of the preposition is a beneficiary of the action indicated by the preposition's governor. \"fought for Napoleon\", \"be charming to them\", \"clean up after him\"",
+ "Instrument": "The object of the preposition indicates the means or the instrument for performing an action that is typically the governor. \"hold at knifepoint\", \"banged his head on the beam\", \"fill the bowl with water\"",
+ "Other": "This is the catch-all category. A preposition labeled as Other has relation, but this sense does not appear frequently enough to support creation of a new category. \"married above her\", \"years behind them\", \"tall for her age\"",
+ "PartWhole": "This relation indicates that one argument is a part or member of another. \"see a friend among them\", \"a slice of cake\"",
+ "Cause": "The objects indicates a cause for the governor. \"in bed with the flu\", \"died of cancer\", \"tired after work\"",
+ "ObjectOfVerb": "The object of the preposition is an object of the verb or the nominalization that is the governor of the preposition. This includes cases like \"construction of the library\", where the object of the preposition is an object of the underlying verb. \"saved from death\", \"cross with her\"", 
+ "Direction": "The prepositional phrase (that is, the preposition along with the object) indicates a direction that modifies the action which is expressed by the governor. \"crept up behind him\", \"drive by the house\", \"roll off the bed\"",
+ "Possessor": "The governor of the preposition is something belonging to the object or an inherent quality of the object . This relation includes familial relations. \"a look about her\", \"son of a friend\", \"his son by his third wife\"",
+ "Experiencer": "The object of the preposition denotes the entity that is target or subject of the action, thought or feeling that is usually indicated by the governor. \"focus attention on her\", \"he was warm toward her\"",
+ "Separation": "The relation indicates separation or removal. The object of the preposition is the entity that is removed. \"tear the door off its hinges\", \"part with possessions\", \"the party was ousted from power\"",
+ "Purpose": "The object of the preposition speci\ufb01es the purpose (i.e., a result that is desired, intention or reason for existence) of the governor. \"networks for the exchange of information\", \"tools for making the picture frame\"",
+ "Recipient": "The object of the preposition identi\ufb01es the person or thing receiving something. \"unkind to her\" \"donated to the hospital\"",
+ "Opponent/Contrast": "This relation indicates a collision, con\ufb02ict or contrast and the object of the preposition refers to one or more entities involved. \"fight against crime\", \"the wars between Russia and Poland\", \"fought with another man\"",
+ "Participant/Accompanier": "The object of the preposition indicates an entity which accompanies another entity, which is typically indicated by either the governor of the preposition or the subject of the governor. \"he is married to Emma\", \"a map pinned to the wall\"",
+ "ProfessionalAspect": "This relation signi\ufb01es a professional relationship between the governor (or the subject of the governor, if the governor is a verb) and the object of preposition, which is an employer, a profession, an institution or a business establishment. \"tutor for the University\", \"bank with TSB\", \"works in publishing\"",
+ "StartState": "The object of the preposition indicates the state or condition that an entity has left. \"recovered from the disease\", \"a growth from $2.2 billion to $2.4 billion\"",
+ "EndState": "The object of the preposition indicates the resultant state of an entity that is undergoing change. The governor of the preposition is usually a verb or noun denoting transformation. \"protest turned into a violent confrontation\", \"she was moved to tears\", \"return towards traditional Keynesianism\"",
+ "Activity": "Describes the relationship between some entity and an activity, an ordeal or a process that can be a verbal noun or a gerund. Note that the object of the preposition is the activity here. \"He is into jet-skiing\", \"out on errands\", \"good at boxing\"",
+ "Co-Participants": "The preposition indicates a choice, sharing or differentiation and involves multiple participants, represented by the object. \"drop in tooth decay among children\", \"links between science and industry\", \"choose between two options\"",
+ "Numeric": "The object of the preposition indicates a numeric quantity (age, price, percentage, etc). \"driving at 50mph\", \"crawled for 300 yards\", \"a boy of 15\"",
+ "Via": "This is an infrequent relation where the object of the preposition indicates a mode of transportation or a path for travel. The governor can be action indicating movement or travel or a noun denoting passengers. \"traveling by bus\", \"he is on his way\", \"sleep on the plane\"",
+ "Source": "The object of the preposition indicates the provenance of the governor or the subject of the governor. This includes cases where the object is the place of origin, the source of information or the creator of an artifact. \"I am from Hackeney\", \"book by Hemmingway\", \"paintings of Rembrandt\"",
+ "Attribute": "The object of the preposition indicates some attribute of either the governor or the subject/object of the governor in case of verb-attached prepositions. \"sell at a loss\", \"paint made from resin\", \"Mozart's Piano Concerto in E flat\"",
+ "MediumOfCommunication": "The prepositional phrase indicates the medium or language of some form of communication or idea. The object is, in a general sense, a 'mode of communication'. This includes languages \"say it in French\" media like TV or internet \"saw it on a website\" or specific instances of these \"saw it on the Sopranos\".",
+ "Agent": "The object of the preposition is the agent of the action indicated by the attachment point. This primarily covers the use of the preposition 'by' in a passive construction. \"Understood by the customers\", \"allegations from the FDA\", \"the address by the officer\"",
+ "Topic": "The object of the preposition denotes the subject or topic under consideration. In many cases, the preposition can be replaced by the phrase 'on the subject of'. The governor of the preposition can be a verb or nominalization that implies an action or analysis or a noun that indicates an information store. \"thinking about you\", \"book on careers\", \"debate over unemployment\"",
+ "Manner": "The prepositional phrase indicates the manner in which an action is performed. The action is typically the governor of the preposition. \"frame the definition along those lines\", \"disappear in a flash\", \"shout with pleasure\"",
+ "Species": "This expresses the relationship between a general category or type and the thing being specified which belongs to the category. The governor is a noun indicating the general category and the object is an instance of that category. \"the city of Prague\", \"this type of book\"",
+ "Location": "The prepositional phrase indicates a locative meaning. This relation includes both physical and figurative aspects of location. \"live at Conway house\", \"left it in the cupboard\", \"left it in her will\", \"bruises above both eyes\"",
+ '`': '`: No semantic function; purely collocational or syntactic',
+ '`i': "Infinitival TO or FOR (with no additional semantics)",
+ '?': 'Unsure. You may be more specific by listing one or more predefined category names (separated by commas), followed by "?".'};
+GENERAL_LABEL_SHORTCUTS = {'`': '`', '?': '?'};
+ALL_LABEL_SHORTCUTS = $.extend({}, N_LABEL_SHORTCUTS, V_LABEL_SHORTCUTS, GENERAL_LABEL_SHORTCUTS);
+
+PSEUDOLABEL_DESCRIPTIONS = {'?': '(unsure; you can also tentatively specify one or more possibilities by following them with ?)', 
+		'??': 'unintelligible',
+		'`': '(skip for now)',
+		'`i': "infinitival TO or FOR (with no additional semantics)",
+		'`d': 'discourse',
+		'`o': 'pronoun',
+		'`n': 'common noun',
+		'`^': 'proper noun',
+		'`p': 'preposition or subordinator',
+		'`a': 'auxiliary',
+		'`v': 'main verb',
+		'`j': 'adjectival',
+		'`r': 'adverb',
+		'`c': 'coordinating conjunction'};
+PSEUDOLABEL_SHORTCUTS = {};
+PSEUDOLABEL_LIST = [];
+Object.keys(PSEUDOLABEL_DESCRIPTIONS).forEach(function (x) {
+	PSEUDOLABEL_SHORTCUTS[x] = x;
+	PSEUDOLABEL_LIST.push(x);
+});
+
+function TokenLabelAnnotator(I, itemId) {
+	this._name = 'TokenLabelAnnotator';
+	this.labelShortcuts = $.extend({}, 
+		N_LABEL_SHORTCUTS,
+		V_LABEL_SHORTCUTS,
+		PSEUDOLABEL_SHORTCUTS);
+
+	this.labels = PSST_LIST_OF_LABELS.concat(PSEUDOLABEL_LIST);
+	this.lexlabeldescriptions = PSST_LEX_LABEL_DESCRIPTIONS;
+	this.labeldescriptions = PSST_SHORT_DEFS;
+
+	this.labeldescriptions = $.extend(this.labeldescriptions, PSEUDOLABEL_DESCRIPTIONS);
+	this.toplabels = [];
+	if (arguments.length == 0) return; // stop -- necessary for inheritance
+	
+	Annotator(this, I, itemId);
+	this.actors = [];
+}
+function strongUnitString(a) {	// given an Actor, the strong unit (multiword group or single-word unit)
+	if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isGrouped(a.tokenOffset, 'strong')) {
+		// get all words in the multiword unit
+		var classes = ' '+$(a.word).attr("class")+' ';
+		var islu = classes.indexOf(' slu');
+		var sluNum = classes.match(/\bslu(\d+)\b/)[1];
+		return $(a.word).parent().children('.slu'+sluNum).map(function () { return $(this).text(); }).toArray().join(' ');
+	}
+	return $(a.word).text();	// single word
+}
+function getTooltip(a, lbl) {	// given an Actor and a supersense label, return the string for the appropriate tooltip
+	if (a.lexlabeldescriptions && a.lexlabeldescriptions[lbl]!==undefined) {
+		var ww = strongUnitString(a).toLowerCase();
+		var w = ww.split(" ")[0];
+		if (a.lexlabeldescriptions[lbl][ww]!==undefined)
+			return a.lexlabeldescriptions[lbl][ww];
+		else if (a.lexlabeldescriptions[lbl][w]!==undefined)
+			return a.lexlabeldescriptions[lbl][w];
+		else
+			return a.labeldescriptions[lbl];
+	}
+	else if (a.labeldescriptions && a.labeldescriptions[lbl]!==undefined)
+		return a.labeldescriptions[lbl];
+	return "";
+}
+TokenLabelAnnotator.prototype._makeTarget = function (wordelt, wordOffset) {
+	var a = new Actor(this);
+	a.word = wordelt;
+	var w = $(a.word).text().toLowerCase();
+	a.url = 'http://www.ark.cs.cmu.edu/PrepWiki/index.php/Category:'+w;
+	a.pos = $.parseJSON($(this.item).find('input.pos').val())[wordOffset];
+	
+	a.tokenOffset = wordOffset;
+	a.labels = this.labels;
+	a.toplabels = this.toplabels;
+
+	var prepw = strongUnitString(a).toLowerCase(); // possibly a multiword prep. TODO: this logic doesn't get executed when updating MWE analysis.
+	if (PSST_TOP_LABELS[prepw])	// prepw may be an MWE
+		a.toplabels = PSST_TOP_LABELS[prepw];
+	else if (PSST_TOP_LABELS[w])	// back off to first word if MWE is not listed
+		a.toplabels = PSST_TOP_LABELS[w];
+
+	a.labelShortcuts = this.labelShortcuts;
+	a.lexlabeldescriptions = this.lexlabeldescriptions;
+	a.labeldescriptions = this.labeldescriptions;
+	this.actors.push(a);
+	a.getValue = function () {
+		return this.target.value;
+	};
+	a.populateLabels = function (labelShortcuts) {
+		/* Refreshes the dropdown menu from the contents of this.labels and this.labelShortcuts 
+		 * (and optionally, this.toplabels).
+		 * If labelShortcuts is provided, first assigns that to this.labelShortcuts 
+		 * and its keys to this.labels.
+		 */
+		
+		if (arguments.length>0) {
+			this.labelShortcuts = labelShortcuts;
+			this.labels = Object.keys(this.labelShortcuts);
+		}
+		
+		// sort the labels, putting the top ones first (the subset that are in the top 
+		// can differ for each dropdown instance)
+		var toplabels = (this.toplabels); // ? this.toplabels : [];
+		var orderedLabels = [];
+		for (var i=0; i<toplabels.length; i++) {
+			orderedLabels.push(this.toplabels[i]);
+		}
+		for (var i=0; i<this.labels.length; i++) {
+			if (orderedLabels.indexOf(this.labels[i])==-1)
+				orderedLabels.push(this.labels[i]);
+		}
+
+		var labelsWithShortcuts = [];
+		
+		for (var i=0; i<orderedLabels.length; i++) {
+			var shortcut = this.labelShortcuts[orderedLabels[i]];
+			var thelabel = orderedLabels[i];
+			if (i<toplabels.length)	// we are still in the top labels
+				thelabel = '<span class="toplabel">'+thelabel+'</span>'
+			labelsWithShortcuts.push({"label": (shortcut) ? '<tt style="background-color: #555; margin-left: -5px; padding: 2px; border-radius: 4px; color: #fff;">'+shortcut+'</tt>' + ' ' + thelabel : thelabel, 
+									  "value": orderedLabels[i],
+									  "shortcut": shortcut});
+		}
+		
+		// update control
+		$(this.target).autocomplete("option", "source", labelsWithShortcuts);
+	};
+	a.firstrender = function () {
+		var theactor = this;
+		var word = this.word;
+		var $word = $(word);
+		var wordId = $(this.word).attr("id");
+		
+		if (theactor.url!==undefined) {
+			$word.dblclick(function (evt, ui) {
+				window.open(theactor.url, '_blank');
+			});
+		}
+		if (theactor.pos!==undefined) {
+			$word.attr("title", theactor.pos);
+		}
+		
+		
+		// http://api.jqueryui.com/autocomplete/
+		// TODO: depending on defaults/preannotations, set placeholder for preps belonging to an MWE
+		var $control = $('<input class="tokenlabel" />').attr({"id": "toktag_"+this.ann.itemId+"_"+wordId.replace(/^i\d+/, ''), 
+			"name": "tag_"+this.ann.itemId+"_"+wordId.replace(/^i\d+/, '')}).autocomplete({ 
+			source: [], // will be populated by populateLabels()
+			/*source: function( request, response ) {
+				var matcher = new RegExp( "^" + $.ui.autocomplete.escapeRegex( request.term ), "i" );
+				response( $.grep( tags, function( item ){
+					return matcher.test( item );
+				}) );
+			}*/
+			response: function (event, ui) {
+				var v = event.target.value;
+				// if entered text exactly matches the shortcut of one of the labels (case-sensitive), move it to the top of the list
+				for (var i=0; i<ui.content.length; i++) {
+					if (ui.content[i].shortcut==v) {
+						ui.content.unshift(ui.content.splice(i,1)[0]);
+						//ui.content[0].label = $('<div></div>').append(ui.content[0].label).find('tt').css("color", '#0ff').parentsUntil().eq(-1).html();
+						break;
+					}
+				}
+			},
+			autoFocus: true, minLength: 0, html: true, 	// the html option uses an extension script
+			focus: function (evt, ui) {	// apply tooltip to focused menu item
+				var v = ui.item.value;
+				var tt = getTooltip(theactor, v);
+				$(evt.currentTarget).attr("title", tt);
+			},
+			// don't handle 'select' event because the value won't be updated yet!
+			change: function (evt, ui) {
+				// apply tooltip to input box to reflect selection
+				var v = theactor.getValue();
+				var tt = getTooltip(theactor, v);
+				$(this).attr("title", tt);
+
+				ann_update(theactor, v);
+			},
+			close: function (evt, ui) {
+				if (evt.originalEvent===undefined)	// invoked directly, not from a UI event
+					return;	// do nothing
+				if (evt.keyCode===undefined || evt.keyCode==13)	// clicked or pressed Enter
+					$('input').eq($('input').index($(this))+1).focus();	// advance focus to next <input> element
+			} }).keyup(function (evt) { if ($(this).val().charAt(0)=='?') $(this).autocomplete("close"); });
+			
+		if (this.initval)
+			$control.val(this.initval);
+		
+		this.target = $control.get(0);
+		
+		this.populateLabels();
+		
+		//var width = this.ann.computeVisibleWidth(this, $control, $word);
+		$word.append($control);
+
+		this.submittable = true;
+		
+		// prevent double-click on preposition label text box from hiding it
+		$control.dblclick(function (evt) { evt.stopPropagation(); });
+		
+		this.aparecium = function () {
+			if (this.rerender())	// show unless readonly and empty
+				$word.css("width", this.ann.computeVisibleWidth(this, $control, $word));
+			else
+				$word.css("width", "inherit");
+		}
+		this.evanesco = function () {
+			$control.hide();
+			$word.css("width", "inherit");
+		}
+		
+		this.evanesco();
+		
+		this.start = function () {
+			if (this.submittable)
+				this.aparecium();
+			this.ann.constructor.started = true;
+		}
+		this.stop = function () {
+			this.evanesco();
+			this.ann.constructor.stopped = true;
+		}
+	};
+	a.rerender = function () {	// if a value may have changed, decide whether to show/hide the control
+		$control = $(this.target);
+		if ($control.prop("readonly") && $control.val()==="") {
+			$control.hide();
+			return false;
+		}
+		else {
+			$control.show();
+//console.log("rerender true");
+			return true;
+		}
+	};
+	return a;
+}
+/* The width that the *word* should have when the control is visible */
+TokenLabelAnnotator.prototype.computeVisibleWidth = function($control, $word) {
+	return Math.max($control.outerWidth(),$word.outerWidth());
+}
+TokenLabelAnnotator.prototype.identifyTargets = function() {
+	var theann = this;
+	$(this.item).find('.sent .w').each(function (w) {
+		theann._makeTarget(this,w);
+	});
+	theann.submittable = true;
+}
+TokenLabelAnnotator.prototype.start = function() {
+	for (var j=0; j<this.actors.length; j++) {
+		this.actors[j].start();
+	}
+	this.started = true;
+}
+TokenLabelAnnotator.prototype.stop = function() {
+	for (var j=0; j<this.actors.length; j++) {
+		this.actors[j].stop();
+	}
+	this.constructor.stopped = true;
+}
+
+// extends TokenLabelAnnotator
+function PrepTokenAnnotator(I, itemId) {
+	TokenLabelAnnotator.call(this, I, itemId);
+	this._name = 'PrepTokenAnnotator';
+	this.PREPS = ['of','to','for','by','with','from','at','over','out','about','in','on','off','as','down','under','above','across','after','against','ago','among','during','before','behind','below','beneath','beside','besides','between','beyond','away','back','into','near','since','until','together','toward','towards','apart','within','without'];
+	var tentative_labels = ['Agent', 'Audience', 'Cause/Reason', 'Comitative', 'Communicator', 'Comparison', 'Cost/Compensation/Price', 
+ 					'Destination/Direction', 'Duration', 'Giver', 'GOAL', 'Instrument', 'Location', 'Manner', 'Means', 'Medium', 
+					'Origin', 'OTHER', 'PATH', 'Patient/Affected', 'Purpose', 'Recipient/Beneficiary/Maleficiary', 'Reciprocal/Co-participant',
+					'Result', 'SOURCE', 'State', 'Time', 'Topic/Content', 'Trajectory', 'X', '?'];
+	var tentative_labeldescriptions = {'X': 'X: No semantic function; purely collocational or syntactic',
+					     'Duration': 'Duration: span of time of an event, e.g. "leave FOR a few days", or interval, "once IN a million years"',
+						 'Manner': 'Manner: e.g. "communicate IN a clear and comprehensible way" [FrameNet]',
+						 'Means': 'Means: e.g. "communicate BY signalling in some such subliminal manner" [FrameNet]',
+						 'Medium': 'Medium: e.g. "communicate OVER the telephone", "mumbled IN French" [FrameNet]',
+						 'Time': 'Time: point in time, e.g. "AT the beginning of the month", "ON Friday", start and end points in "work FROM 9:00 TO 5:00"',
+						 'GOAL': 'GOAL: Miscellaneous goal (not Destination, Recipient/Beneficiary/Maleficiary, or Purpose)',
+						 'SOURCE': 'SOURCE: Miscellaneous source (not Origin, Giver, or Communicator)',
+						 'PATH': 'PATH: Miscellaneous path (not Trajectory, Manner, Means, or Medium)',
+						 'OTHER': 'OTHER: Semantic function not otherwise listed. You may instead enter "?" followed by an ad hoc category name.',
+						 '?': 'Unsure. You may be more specific by listing one or more predefined category names (separated by commas), followed by "?".'};
+	var srikumar_labels = ['Activity','Agent','Attribute','Beneficiary','Cause','Co-Particiants','Destination','Direction',
+						   'EndState','Experiencer','Instrument','Location','Manner','MediumOfCommunication','Numeric',
+						   'ObjectOfVerb','Opponent/Contrast','Other','PartWhole','Participant/Accompanier','PhysicalSupport',
+						   'Possessor','ProfessionalAspect','Purpose','Recipient','Separation','Source','Species','StartState',
+						   'Temporal','Topic','Via','`','?'];
+	var srikumar_labeldescriptions = {'`': '`: No semantic function; purely collocational or syntactic',
+					     'Other': 'Other: Semantic function not otherwise listed. You may instead enter "?" followed by an ad hoc category name.',
+						 '?': 'Unsure. You may be more specific by listing one or more predefined category names (separated by commas), followed by "?".'};
+	this.labels = srikumar_labels;
+	this.labeldescriptions = srikumar_labeldescriptions;
+}
+PrepTokenAnnotator.prototype = new TokenLabelAnnotator();
+PrepTokenAnnotator.prototype.constructor = PrepTokenAnnotator;
+PrepTokenAnnotator.prototype.isPrep = function (s) {
+	return this.PREPS.indexOf(s.trim().toLowerCase())>-1;
+}
+PrepTokenAnnotator.prototype.identifyTargets = function() {
+	var theann = this;
+	
+	// create a hidden field for aggregating all the values of individual actors
+	var item = this.item;
+	var $sentence = $(item).find('p.sent');
+	var $out = $('<input type="hidden" name="preps[]" class="preps" value=""/>').attr({"id": "preps_"+this.itemId});
+	$out.insertAfter($sentence);
+	this.target = $out.get(0);
+	
+	// create individual actors
+	decorateActor = function (a) {
+		/*a.listenForInteraction = function() {
+			var theann = this;
+			$(this.target).change(function (evt) {
+				ann_update(theann, theann.getValue());
+			});
+		};*/ // handled by change event callback in .autocomplete
+		a.validate = function (finalization) {
+			if (arguments.length<1) finalization = false;
+			var v = this.getValue();
+//console.log("validating",v);
+			var theactor = this;
+			var errstatus = function() {
+				if (v.trim()==="") {
+					/*if (!finalization)
+						return '';	// don't complain about empty values until submission
+					if (theactor.target.placeholder===undefined || theactor.target.placeholder=="")
+						return 'A non-empty value is required.';*/
+					return '';	// don't worry about empty values. The "required" attribute is used to block submission of illegally empty fields.
+				}
+				else if (theactor.labels.indexOf(v)==-1 && v.charAt(0)!='?') {
+					if (v.charAt(v.length-1)!='?')
+						return 'Tag must be drawn from the predefined label list, or begin or end with "?"';
+					else {	// LABEL? or LABEL1,LABEL2? etc.
+						var parts = v.substring(0,v.length-1).split(',');
+						for (var p=0; p<parts.length; p++) {
+							var part = parts[p];
+							if (theactor.labels.indexOf(part)==-1)
+								return 'Invalid label in tag: "'+part+'" (tags ending in "?" must contain 0 or more comma-separated labels from the predefined list)';
+						}
+					}
+				}
+				// OK
+				return '';
+			}();
+			
+			if (errstatus!=='')
+				$(this.target).removeAttr("title");	// remove title text to make room for error message
+			this.target.setCustomValidity(errstatus);
+		};
+	};
+	
+	$(this.item).find('.sent .w').each(function (w) {
+		if (theann.isPrep($(this).text())) {
+			var a = theann._makeTarget(this,w);
+			decorateActor(a);
+			$(this).addClass("prepTarget");
+		}
+		$(this).dblclick(function (evt) {
+			var w = $(this).data("w");
+			if ($(this).hasClass("prepTarget")) {
+				for (var j=0; j<theann.actors.length; j++) {
+					if (theann.actors[j].tokenOffset==w) {
+						theann.actors[j].remove()
+						break;
+					}
+				}
+				$(this).removeClass("prepTarget");
+			}
+			else {
+
+				var a = theann._makeTarget(this,w);
+				decorateActor(a);
+				$(this).addClass("prepTarget");
+				a.initValue();
+				a.listenForInteraction();
+
+				if (a.ann.constructor.started)
+					a.start();
+				if (a.ann.constructor.stopped)
+					a.stop();
+			}
+		});
+	});
+	
+	theann.submittable = true;
+}
+PrepTokenAnnotator.prototype.updateTargets = function(updateInfo) {
+	var theann = this;
+	$.each(this.actors, function (j, a) {
+		// update defaults to reflect the current MWE analysis
+		if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isGrouped(a.tokenOffset, 'strong'))
+			$(a.target).attr("placeholder", "X").removeAttr("required");
+		else
+			$(a.target).removeAttr("placeholder").attr("required","required");
+	});
+}
+
+PrepTokenAnnotator.prototype.start = function() {
+	for (var j=0; j<this.actors.length; j++) {
+		this.actors[j].start();
+	}
+	this.started = true;
+	this.updateTargets();	// ensure required attribute is set even if no MWE annotations 
+}
+
+PrepTokenAnnotator.prototype.validate = function() {
+	var preps = {};
+	$.each(this.actors, function (j, a) {
+		a.validate();
+		var tag = a.getValue();
+		preps[a.tokenOffset] = $(a.word).text() + '|' + (tag || $(a.target).attr("placeholder") || '');
+	});
+	$(this.target).val($.toJSON(preps));
+}
+
+ChunkLabelAnnotator.prototype = new TokenLabelAnnotator();
+ChunkLabelAnnotator.prototype.constructor = ChunkLabelAnnotator;
+function ChunkLabelAnnotator(I, itemId) {
+	TokenLabelAnnotator.call(this, I, itemId);
+	this._name = 'ChunkLabelAnnotator';
+	this.actors = [];
+	this.pos = $.parseJSON($(this.item).find('input.pos').val());
+}
+ChunkLabelAnnotator.prototype.computeVisibleWidth = function(a, $control, $word) {
+	if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkSegmentEnder(a.tokenOffset, 'strong')) {
+		return Math.max($control.outerWidth(),$word.outerWidth());
+	}
+	return "inherit";	// the chunk has multiple words, so don't make extra room for the control
+}
+ChunkLabelAnnotator.prototype.start = function() {
+	for (var j=0; j<this.actors.length; j++) {
+		this.actors[j].pos = this.pos[this.actors[j].tokenOffset];
+	}
+	this.updateTargets();
+	for (var j=0; j<this.actors.length; j++) {
+		this.actors[j].start();
+	}
+	this.started = true;
+}
+ChunkLabelAnnotator.prototype.identifyTargets = function() {
+	var theann = this;
+	
+	// create a hidden field for aggregating all the values of individual actors
+	var item = this.item;
+	var $sentence = $(item).find('p.sent');
+	var $out = $(item).find('input.chklbls').attr({"id": "chklbls_"+this.itemId});
+	$out.insertAfter($sentence);
+	this.target = $out.get(0);
+	
+	// create individual actors
+	decorateActor = function (a) {
+		a.deserialize = function (isInitial) {
+			var val = '';
+			var ignoreInitialVal = 'false';
+			if (ignoreInitialVal==='maybe') {
+				// ignore the value iff the annotation being loaded is from someone other than the current user
+				ignoreInitialVal = ($(item).find('input.usingCurrentVersionThisUser').val()!=='true');
+//$('textarea.comment').val($(item).find('input.reconcileduser').eq(0).val());
+			}
+			
+			// N.B. If ignoring only PSST annotations, after deserialize(true) is called 
+			// and we determine which tokens are prepositions, 
+			// deserialize(false) will be called for other tokens to load their labels. 
+			// In the deserialize(true) call, all labels will be (provisionally) ignored; 
+			// then, in the deserialize(false) call, 'ignoreInitialVal' will be irrelevant.
+			if ((!isInitial || !ignoreInitialVal) && this.ann.target.value) {
+				var v = $.parseJSON(this.ann.target.value)[this.tokenOffset];
+				if (v) {
+					v = v.split('|');	// if of the form word|LABEL, strip the first part
+					val = v[v.length-1];
+				}
+			}
+			
+			if (isInitial)
+				this.initval = val;	// will be initialized in firstrender()
+			else if (this.target.value!==val)	// condition avoids triggering form validation error on an empty field
+				$(this.target).val(val);
+		}
+		a.initValue = function () {	// look for previously saved value
+			this.deserialize(true);
+			return Actor.prototype.initValue.call(this);
+		}
+	
+		a.validate = function () {
+			var v = this.getValue();
+
+			if (v && this.toplabels && this.toplabels.length>0) {
+				$(this.target).toggleClass("unsuggested-label", ($.inArray(v, this.toplabels)===-1));
+			}
+
+			var theactor = this;
+			var errstatus = function() {
+				if (v.trim()==="") {
+					return '';	// don't worry about empty values. The "required" attribute is used to block submission of illegally empty fields.
+				}
+				else if (theactor.labels.indexOf(v)==-1 && v.charAt(0)!='?') {
+					if (v.charAt(v.length-1)!='?')
+						return 'Tag must be drawn from the predefined label list, or begin or end with "?"';
+					else {	// LABEL? or LABEL1,LABEL2? etc.
+						var parts = v.substring(0,v.length-1).split(',');
+						for (var p=0; p<parts.length; p++) {
+							var part = parts[p];
+							if (theactor.labels.indexOf(part)==-1)
+								return 'Invalid label in tag: "'+part+'" (tags ending in "?" must contain 0 or more comma-separated labels from the predefined list)';
+						}
+					}
+				}
+				// OK
+				return '';
+			}();
+			
+			if (errstatus!=='')
+				$(this.target).removeAttr("title");	// remove title text to make room for error message
+			this.target.setCustomValidity(errstatus);
+		};
+	};
+	
+	$(this.item).find('.sent .w').each(function (w) {
+		var a = theann._makeTarget(this,w);
+		decorateActor(a);
+		$(this).addClass("chklblTarget");
+	});
+	
+	theann.submittable = true;
+}
+ChunkLabelAnnotator.prototype.updateTargets = function(updateInfo) {
+	var theann = this;
+	$.each(this.actors, function (j, a) {
+		if (false)	// removed read-only mode
+			this.deserialize(false);	// look up this actor's value from overall annotator value (may have changed in the versions browser)
+		
+		// update defaults to reflect the current MWE analysis
+		if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, theann.filterFxn, (theann.filterFxn==ChunkLabelAnnotator.prototype.P_FILTER) ? PREP_SPECIAL_MW_BEGINNERS : false)) {
+			$(a.target).prop("disabled","").prop("required","required");
+			a.submittable = true;
+			if (theann.filterFxn==ChunkLabelAnnotator.prototype.V_FILTER) {
+				if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, ChunkLabelAnnotator.prototype.N_FILTER))
+					// this chunk has BOTH a noun and a verb, so allow either kind of label
+					a.populateLabels(ALL_LABEL_SHORTCUTS);
+				else // this chunk has only verbs
+					a.populateLabels($.extend({}, V_LABEL_SHORTCUTS, PSEUDOLABEL_SHORTCUTS));
+				a.validate();	// if the noun label was saved, remove the invalid flag
+			}
+			else if (theann.filterFxn==ChunkLabelAnnotator.prototype.NV_FILTER) {
+				// we are labeling nouns and verbs
+				if (!AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, ChunkLabelAnnotator.prototype.N_FILTER))
+					// but this chunk contains no nouns: limit to verbs
+					a.populateLabels($.extend({}, V_LABEL_SHORTCUTS, PSEUDOLABEL_SHORTCUTS));
+				else if (!AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, ChunkLabelAnnotator.prototype.V_FILTER))
+					// but this chunk contains no verbs: limit to nouns
+					a.populateLabels($.extend({}, N_LABEL_SHORTCUTS, PSEUDOLABEL_SHORTCUTS));
+				else // this chunk contains nouns and verbs
+					a.populateLabels(ALL_LABEL_SHORTCUTS);
+				a.validate();
+			}
+			if (theann.constructor.started) a.aparecium();
+			//$(a.target).attr("placeholder", "X").removeAttr("required");
+		}
+		else if (AA[a.ann.I][MWEAnnotator.annotatorTypeIndex].isChunkBeginner(a.tokenOffset, 'strong', theann.pos, function (word, pos) { return true; })) {
+			// would begin a chunk but fails POS filter
+			a.submittable = (a.target.value!=="");	// so previous values will be saved when annotating other POSes
+			if (a.initval.indexOf("#")>-1) {	// enable due to a reconciliation conflict
+				$(a.target).prop("disabled","").prop("required","required");
+				a.populateLabels(ALL_LABEL_SHORTCUTS);	// TODO: this is sort of a hack--ideally we'd still filter possible labels by POS
+				a.validate();
+			}
+			else {
+				if (true) {	// false for read-only mode
+					this.deserialize(false);	// restore the initial (saved) value for this field, since it might have been ignored but is not the subject of this annotation phase
+					a.submittable = (a.target.value!=="");
+				}
+				$(a.target).prop("disabled","disabled").prop("required","");
+			}
+			if (theann.constructor.started && a.submittable) a.aparecium();
+		}
+		else {
+			// irrelevant given MWE analysis
+			a.submittable = false;
+			$(a.target).prop("disabled","disabled").prop("required","");
+			if (theann.constructor.started) a.evanesco();
+		}
+	});
+}
+ChunkLabelAnnotator.prototype.validate = function() {
+	var lbls = {};
+	$.each(this.actors, function (j, a) {
+		a.validate();
+		var tag = a.getValue();
+		if (tag!=='' && a.submittable) {	// don't include empty tags
+			lbls[a.tokenOffset] = $(a.word).text() + '|' + (tag || $(a.target).attr("placeholder") || '');
+		}
+	});
+	$(this.target).val($.toJSON(lbls));
+}
+
+// global variables for the annotation protocol
+annotators = [MWEAnnotator]; // ItemNoteAnnotator,       PrepTokenAnnotator, ChunkLabelAnnotator
+II = []; // item offset on page => DOM node
+AA = []; // annotators for each item
+
+// stages allow different kinds of annotation to become available to the user at different times
+// 'submit' progresses to the next stage until all are exhausted, then submits the form
+INIT_STAGE = 0;
+CUR_STAGE = 0;
+NUM_STAGES = 1;
+ItemNoteAnnotator.prototype.startStage = 0;
+MWEAnnotator.prototype.startStage = 0;
+PrepTokenAnnotator.prototype.startStage = 1;
+ChunkLabelAnnotator.prototype.startStage = 1;
+ItemNoteAnnotator.prototype.stopStage = -1;
+MWEAnnotator.prototype.stopStage = -1;
+PrepTokenAnnotator.prototype.stopStage = -1;
+ChunkLabelAnnotator.prototype.stopStage = -1;
+ChunkLabelAnnotator.prototype.N_FILTER = function (word, pos) { return pos.match(/^(N|ADD|PROPN)/) && !pos.match(/^NUM/); };
+ChunkLabelAnnotator.prototype.V_FILTER = function (word, pos) { return pos.match(/^V/); };
+ChunkLabelAnnotator.prototype.NV_FILTER = function (word, pos) { return pos.match(/^(N|ADD|PROPN|V)/) && !pos.match(/^NUM/); };
+ChunkLabelAnnotator.prototype.PREPS = ['of','to','for','by','with','from','at','over','out','about','in','on','off','as','down','under','above','across','after','against','ago','among','during','before','behind','below','beneath','beside','besides','between','beyond','away','back','into','near','since','until','together','toward','towards','apart','within','without'];
+ChunkLabelAnnotator.prototype.P_FILTER = function (word, pos) {	// should the given token be tagged as a preposition?
+	// PRE is from Italian tagset
+	return pos.match(/^(RP|TO|PRE$)/) || (pos.match(/^(IN|RB)/) && PREPS_MASTER.indexOf(word.toLowerCase())>-1);
+}	// TODO: use multiword entries in PREPS_MASTER?
+ChunkLabelAnnotator.prototype.filterFxn = ChunkLabelAnnotator.prototype.PNV_FILTER;
+
+function ann_init() {
+	for (var k=0; k<annotators.length; k++) {
+		annotators[k].annotatorTypeIndex = k;
+	}
+	$('.item').each(function (j) {
+		var itm = this;
+		var itmId = $(itm).attr("id").substring(1);	// strip initial underscore
+		var I = II.push(itm)-1;
+		anns = [];
+		for (var k=0; k<annotators.length; k++) {
+			anns.push(new annotators[k](I, itmId));
+			anns[anns.length-1].annotatorTypeIndex = anns.length-1;
+		}
+		AA.push(anns);
+	});
+}
+function ann_setup() {
+	for (var I=0; I<II.length; I++) {
+		$.each(AA[I], function (j, A) {
+			A.identifyTargets();
+			$.each(A.actors, function (k, a) {
+				a.initValue();
+				a.listenForInteraction();
+			});
+		});
+	}
+	while (CUR_STAGE<INIT_STAGE)
+		ann_submit();
+	if (false) {	// true for read-only
+		$('form input,form textarea').prop("readonly", "true").each(function (j) {
+			if (this.value=="") $(this).hide();
+		});
+	}
+}
+function ann_update(a, newval) {
+	var I = a.ann.I;
+	var updateInfo = a.setValue(newval);
+	for (var j=a.ann.annotatorTypeIndex; j<AA[I].length; j++) {
+		var A = AA[I][j];
+		if (updateInfo.isStructural)
+			A.updateTargets(updateInfo);
+		A.validate();
+	}
+}
+function ann_submit() {
+	var startReady = [];
+	var stopReady = [];
+	for (var I=0; I<AA.length; I++) {
+		for (var j=0; j<AA[I].length; j++) {
+			var A = AA[I][j];
+			
+			var thisStage = (A.startStage===undefined || A.startStage<=CUR_STAGE);
+			thisStage = thisStage && (A.stopStage===undefined || A.stopStage<0 || A.stopStage>CUR_STAGE);
+
+			if (thisStage) {
+				A.validate(true);
+				if (A.stopStage && A.stopStage==(CUR_STAGE+1)) { // stop
+					A.stop();
+				}
+			}
+			else if (A.startStage==(CUR_STAGE+1)) {	// start
+				A.start();
+			}
+		}
+	}
+	CUR_STAGE++;
+	if (PrepTokenAnnotator.annotatorTypeIndex!==undefined && PrepTokenAnnotator.prototype.startStage==(CUR_STAGE+1))
+		$('input[type=submit]').val("Continue to prepositions »");
+	else if (ChunkLabelAnnotator.annotatorTypeIndex!==undefined && ChunkLabelAnnotator.prototype.startStage==(CUR_STAGE+1))
+		$('input[type=submit]').val("Continue to supersenses »");
+	else
+		$('input[type=submit]').val("Save & continue »");
+	return (CUR_STAGE>=NUM_STAGES);	// ready to submit form
+}
+
+
+/*********************************************/
+
+
+
+
+KEY_LEFT_ARROW = 37;
+KEY_UP_ARROW = 38;
+KEY_RIGHT_ARROW = 39;
+KEY_DOWN_ARROW = 40;
+
+var inited = false;
+
+function init() {
+	if (inited) return;	// only do this once
+	inited = true;
+	
+	$('.item > p.sent').each(function (j) {
+		var ww = $(this).text().split(/\s+/g);
+		$(this).attr({"data-ww": ww});
+		$(this).html('');
+		if (ww.length>1 || ww[0]!=="") {
+			for (var i=0; i<ww.length; i++) {
+				$('<span>').attr({"id": "i"+j+"w"+i, "class": "w", "data-w": i}).text(ww[i]).appendTo($(this));
+				if (i<ww.length-1) $(this).append(' ');
+			}
+		}
+	});
+	
+	ann_init();
+	ann_setup();
+
+
+	if ((CUR_STAGE+1)>=NUM_STAGES) {
+		//$('input[type=submit]').val("Save & continue »");
+	}
+	else if (PrepTokenAnnotator.annotatorTypeIndex!==undefined && PrepTokenAnnotator.prototype.startStage==(CUR_STAGE+1))
+		$('input[type=submit]').val("Continue to prepositions »");
+	else if (ChunkLabelAnnotator.annotatorTypeIndex!==undefined && ChunkLabelAnnotator.prototype.startStage==(CUR_STAGE+1))
+		$('input[type=submit]').val("Continue to supersenses »");
+	
+//	$('form').sisyphus();	// use localstorage to cache form data so it is preserved across refresh
+	for (var I=0; I<II.length; I++) {	// now that input fields may have been populated, re-render the MWE annotations
+		AA[I][MWEAnnotator.annotatorTypeIndex].validate();
+	}
+	
+}
+
+$(function () {
+	init();
+});
+
+function arraysEq(x, y) {
+	if (x.length!=y.length) return false;
+	for (var i=0; i<x.length; i++) {
+		if (x[i]!==y[i]) return false;
+	}
+	return true;
+}
+
+/* Process tokens of the original sentence (ww) in tandem with the MWE markup (m).
+ * The latter should differ only with respect to MWE joiners.
+ * Return [sLexOffsets, wLexOffsets] (strong and weak lexical unit assignments, respectively).
+ * E.g., [[0,1,1,2],[0,1,1,1]] indicates the segmentation: x x_x~x
+ * On failure, returns an error message string.
+ *
+ * Sequences of spaces in the markup are normalized. 
+ * Input tokens must not begin or end with a space or contain multiple 
+ * consecutive spaces. Apart from that restriction, tokens with special characters 
+ * (including '_') are allowed.
+ */
+function parseMWEMarkup(ww, m) {
+	var m = m.replace(/\s+/g, ' ').trim()+' ';
+	var decorations = [];	// left and right MWE information on tokens
+	var j = 0;	// character offset into 'm'
+	for (var i=0; i<ww.length; i++) {
+		var lattached = true;	// no space on the left
+		if (j==0 || m[j]==' ') {
+			lattached = false;
+			if (j>0) j++;
+		}
+		var w = ww[i];
+		var rLexer = new RegExp('^([_~]?)'+RegExp.escape(w)+'(([_~]|\\$\\d+|\\|\\d+(\\$\\d+)?)?)(?=[ _~])');	//
+		var lex = m.substr(j).match(rLexer);
+		if (lex===null) {
+			/*console.log(m.substr(j));
+			console.log(rLexer.source);*/
+			return 'Token '+i+' from input expected at markup position '+j+': '+w;
+		}
+		// left and right decorations
+		var ldec = lex[1];
+		if (!lattached)
+			ldec = ' '+ldec;
+		var rdec = lex[2];
+		decorations.push([ldec,rdec]);
+		j += lex[0].length;
+	}
+	
+	// Now parse the left and right decorations into groups
+	var sgroupsByName = {};	// named index -> offset
+	var wgroupsByName = {};
+	var sNameCount = {};	// named index -> number of times name appears in the markup (should be >=2)
+	var wNameCount = {};
+	var sLastOpenGroupOffset = null;
+	var wLastOpenGroupOffset = null;
+	var sLexOffsets = [];	// each lexical unit offset is the offset of its first token
+	var wLexOffsets = [];	// every token belongs to a lexical unit, singleton or multiword
+	for (var i=0; i<decorations.length; i++) {
+		var kS = kW = -1;
+		var ldec = decorations[i][0];
+		var rdec = decorations[i][1];
+		var nextldec = (i<decorations.length-1) ? decorations[i+1][0] : '';
+		var lattached = !ldec.startsWith(' ');
+		
+		// Determine the current token's lexical unit
+		if (ldec==' ')
+			kS = kW = i;
+		else if (ldec=='_') {
+			kS = sLexOffsets[i-1];
+			kW = i;
+		}
+		else if (ldec==' _') {
+			if (sLastOpenGroupOffset===null)
+				return 'No open strong MWE to continue at input token '+i+': '+ww[i];
+			if (i>0 && sLexOffsets[i-1]==sLastOpenGroupOffset)
+				return 'Input token '+i+' cannot continue an open strong group from the previous token (join consecutively instead): '+ww[i];
+			kS = sLastOpenGroupOffset;
+			sLastOpenGroupOffset = null;
+			kW = i;
+		}
+		else if (ldec=='~') {
+			kS = i;
+			kW = wLexOffsets[i-1];
+		}
+		else if (ldec==' ~') {
+			kS = i;
+			if (wLastOpenGroupOffset===null)
+				return 'No open weak MWE to continue at input token '+i+': '+ww[i];
+			if (i>0 && wLexOffsets[i-1]==wLastOpenGroupOffset)
+				return 'Input token '+i+' cannot continue an open weak group from the previous token (join consecutively instead): '+ww[i];
+			kW = wLastOpenGroupOffset;
+			wLastOpenGroupOffset = null;
+		}
+		
+		
+		
+		// Because of the way the regex is set up, 
+		// contiguous joiners should always be in ldec.
+		// Thus, nonempty rdec should indicate an open group.
+		if (rdec!=='') {
+			if (rdec.indexOf('|')>-1 || rdec.indexOf('$')>-1) {
+				sName = rdec.match(/\|\d+/);
+				if (sName!==null) {
+					sName = sName[0];
+					if (sName in sgroupsByName) {
+						// relabel any previous occurrences of kS 
+						// so they are in the same group
+						for (var q=kS; q<i; q++) {
+							sLexOffsets[q] = sgroupsByName[sName];
+							sNameCount[sName]++;
+						}
+						kS = sgroupsByName[sName];
+						sNameCount[sName]++;
+					}
+					else {
+						sgroupsByName[sName] = kS;
+						sNameCount[sName] = 1;
+					}
+				}
+				wName = rdec.match(/\$\d+/);
+				if (wName!==null) {
+					wName = wName[0];
+					if (wName in wgroupsByName) {
+						// relabel any previous occurrences of kW 
+						// so they are in the same group
+						for (var q=kW; q<i; q++) {
+							wLexOffsets[q] = wgroupsByName[wName];
+							wNameCount[wName]++;
+						}
+						kW = wgroupsByName[wName];
+						wNameCount[wName]++;
+					}
+					else {
+						wgroupsByName[wName] = kW;
+						wNameCount[wName] = 1;
+					}
+				}
+			}
+			else if (!nextldec.startsWith(' '))
+				return 'Invalid markup (probably at the end of the sentence)'
+				
+			if (rdec=='_') {	// an open strong group
+				if (sLastOpenGroupOffset!==null)
+					return 'Already an open strong MWE: input tokens '+sLastOpenGroupOffset+' and '+kS;
+				sLastOpenGroupOffset = kS;
+			}
+			else if (rdec=='~') {	// an open weak group
+				if (wLastOpenGroupOffset!==null)
+					return 'Already an open weak MWE: input tokens '+wLastOpenGroupOffset+' and '+kW;
+				wLastOpenGroupOffset = kW;
+			}
+		}
+		
+		sLexOffsets.push(kS);
+		wLexOffsets.push(kW);
+	}
+	if (sLastOpenGroupOffset!==null)
+		return 'Unfinished strong MWE starting at token '+sLastOpenGroupOffset+': '+ww[sLastOpenGroupOffset];
+	if (wLastOpenGroupOffset!==null)
+		return 'Unfinished weak MWE starting at token '+wLastOpenGroupOffset+': '+ww[wLastOpenGroupOffset];
+	var sNames = Object.keys(sNameCount);
+	for (var q=0; q<sNames.length; q++) {
+		var sName = sNames[q];
+		if (sNameCount[sName]<2)
+			return 'Strong MWE index only applies to one contiguous expression: '+sName;
+	}
+	var wNames = Object.keys(wNameCount);
+	for (var q=0; q<wNames.length; q++) {
+		var wName = wNames[q];
+		if (wNameCount[wName]<2)
+			return 'Weak MWE index only applies to one contiguous expression: '+wName;
+		var wOffset = wgroupsByName[wName];
+		var firstSOffsetInW = sLexOffsets[wLexOffsets[wOffset]];
+		var foundMultipleS = false;
+		for (var v=wOffset+1; v<wLexOffsets.length; v++) {
+			if (wLexOffsets[v]==wOffset && sLexOffsets[v]!=firstSOffsetInW) {
+				// same weak expression, different strong expression
+				foundMultipleS = true;
+				break;
+			}
+		}
+		if (!foundMultipleS)
+			return 'Weak MWE at token '+wOffset+' must contain strictly more tokens than those of a single strong MWE';
+			// e.g., x|1$2 y x|1$2 is disallowed
+	}
+	
+	return [sLexOffsets, wLexOffsets];
+}
+
+function loadVersion(I, versionS) {
+	var parts = versionS.split('\t');
+
+	var mweactor = AA[I][MWEAnnotator.annotatorTypeIndex].actors[0];
+	$(mweactor.target).val(parts[parts.length-2]);
+	ann_update(mweactor, mweactor.getValue());
+	
+	var noteactor = AA[I][ItemNoteAnnotator.annotatorTypeIndex].actors[0];
+	$(noteactor.target).val(parts[parts.length-1]);
+	ann_update(noteactor, noteactor.getValue());
+	
+	var meta = $.parseJSON(parts[parts.length-3].replace(/\\'/g,"'"));
+	var chklblann = AA[I][ChunkLabelAnnotator.annotatorTypeIndex];
+	$(chklblann.target).val($.toJSON(meta.chklbls));
+	chklblann.updateTargets();
+	
+	// TODO: preps
+}
+
+
+function doSubmit() {
+
+	var orig = "It even got a little worse during a business trip to the city , so on the advice of a friend I set up an appointment with True Massage .";
+	var markup = "It even got~ a_little ~worse during a business~trip to the city , so on|1 the advice|1 of a friend I set_up an appointment~with True_Massage .";
+	$('.item .input').val(($('.item .input').val()==orig) ? markup : orig);
+
+	return ann_submit();
+}
+
+function editsent(evt) {
+	// reset stuff
+	$("#mwe_dummy_sid").remove();
+	II = []; // item offset on page => DOM node
+	AA = []; // annotators for each item
+	inited = false;
+	var sent = $("#inputsent").val().trim();
+	$('#sent_dummy_sid').text(sent);
+	init();
+}
+
+</script>
+<title>Multiword Expression Annotation Markup Demo</title>
+</head>
+<body>
+
+<!--	<div class="homelink"><a href="#">home</a></div>-->
+
+<h1 style="text-align: center">Multiword Expression Annotation Markup Demo</h1>
+
+
+<div id="_dummy_sid" class="item">
+
+<textarea id="inputsent" placeholder="Enter some tokenized text" oninput="editsent()" rows="5" cols="80"></textarea>
+
+<p id="sent_dummy_sid" class="sent"> </p>
+<p style="text-align: center;" class="buttons">
+
+<p>Enter text you want to annotate in the first box. It will be displayed below and copied to the second box,
+<span style="background-color: #ff0;">overwriting anything that is in the second box</span>.</p>
+
+<p>In the second box, add underscore (<tt>_</tt>) characters to join words into strong expressions, 
+and tilde (<tt>~</tt>) characters to join strong parts into weak expressions.
+A space before or after indicates a gap. For example, to indicate two expressions, one of which interrupts the other:</p>
+
+<pre>It even got~ a_little ~worse .</pre>
+
+<p>The rendered sentence will be color-coded to show the MWEs as you edit the second box.</p>
+
+<p>If the box turns red it means there is an incomplete/invalid annotation. Hover over the box to see the error message.</p>
+
+<p style="color: #aaa">Advanced: if consecutive <tt>_</tt> and <tt>~</tt> markup is not expressive enough, strong expressions can be indexed numerically after a 
+pipe symbol (e.g. <tt>|1</tt>) and weak expressions after a dollar sign (<tt>$1</tt>):
+
+<pre style="color: #aaa">On$1 the advice$1 of a friend I set|2 an appointment~with True_Massage up|2 .</pre>
+
+<p style="text-align: center"><small>Created by <a href="http://nathan.cl">Nathan Schneider</a></small></p>
+
+</body>
+</html>
